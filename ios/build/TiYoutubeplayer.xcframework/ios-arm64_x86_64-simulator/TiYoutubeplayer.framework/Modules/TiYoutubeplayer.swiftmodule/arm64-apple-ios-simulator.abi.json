@@ -1,0 +1,140 @@
+{
+  "ABIRoot": {
+    "kind": "Root",
+    "name": "TiYoutubeplayer",
+    "printedName": "TiYoutubeplayer",
+    "children": [
+      {
+        "kind": "Import",
+        "name": "UIKit",
+        "printedName": "UIKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer",
+        "declAttributes": [
+          "RawDocComment"
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "TitaniumKit",
+        "printedName": "TitaniumKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "YouTubePlayerKit",
+        "printedName": "YouTubePlayerKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "UIKit",
+        "printedName": "UIKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer",
+        "declAttributes": [
+          "RawDocComment"
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "TitaniumKit",
+        "printedName": "TitaniumKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "YouTubePlayerKit",
+        "printedName": "YouTubePlayerKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "Combine",
+        "printedName": "Combine",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "SwiftUI",
+        "printedName": "SwiftUI",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "WebKit",
+        "printedName": "WebKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      },
+      {
+        "kind": "Import",
+        "name": "UIKit",
+        "printedName": "UIKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer",
+        "declAttributes": [
+          "RawDocComment"
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "TitaniumKit",
+        "printedName": "TitaniumKit",
+        "declKind": "Import",
+        "moduleName": "TiYoutubeplayer"
+      }
+    ],
+    "json_format_version": 8
+  },
+  "ConstValues": [
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/Classes\/TiYoutubeplayerModule.swift",
+      "kind": "StringLiteral",
+      "offset": 2418,
+      "length": 21,
+      "value": "\"SCALING_ASPECT_FILL\""
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/Classes\/TiYoutubeplayerModule.swift",
+      "kind": "StringLiteral",
+      "offset": 2533,
+      "length": 20,
+      "value": "\"SCALING_ASPECT_FIT\""
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "BooleanLiteral",
+      "offset": 497,
+      "length": 4,
+      "value": "true"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "StringLiteral",
+      "offset": 545,
+      "length": 8,
+      "value": "\"hd1080\""
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "IntegerLiteral",
+      "offset": 18687,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "IntegerLiteral",
+      "offset": 19030,
+      "length": 1,
+      "value": "0"
+    }
+  ]
+}

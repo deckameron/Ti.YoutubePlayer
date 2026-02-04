@@ -1,0 +1,17 @@
+{
+  "dependencies": [
+    {
+      "remotePackageReference": "YouTubePlayerKit",
+      "repositoryURL": "https://github.com/SvenTiigi/YouTubePlayerKit",
+      "requirementKind": "upToNextMajorVersion",
+      "requirementMinimumVersion": "1.9.0",
+      "products": [
+        {
+          "productName": "YouTubePlayerKit",
+          "frameworkName": "YouTubePlayerKit",
+          "linkage": "host"
+        }
+      ]
+    }
+  ]
+}

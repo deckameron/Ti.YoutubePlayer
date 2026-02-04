@@ -1,0 +1,11 @@
+framework module TiYoutubeplayer {
+  umbrella header "TiYoutubeplayer.h"
+  export *
+
+  module * { export * }
+}
+
+module TiYoutubeplayer.Swift {
+  header "TiYoutubeplayer-Swift.h"
+  requires objc
+}
