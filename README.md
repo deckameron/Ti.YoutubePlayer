@@ -4,7 +4,6 @@ A native Titanium module for iOS that enables inline YouTube video playback with
 
 ![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
 
-<img  src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/image.jpeg?raw=true"  width="300"  alt="Example" />
 
 ### Roadmap
 
@@ -52,6 +51,21 @@ Add the module to your `tiapp.xml`:
 <modules>
     <module platform="iphone">ti.youtubeplayer</module>
 </modules>
+```
+
+### Permissions
+
+Add microphone permission to `tiapp.xml` for recording:
+
+```xml
+<ios>
+    <plist>
+        <dict>
+            <key>NSAllowsArbitraryLoadsInWebContent</key>
+            <true/>
+        </dict>
+    </plist>
+</ios>
 ```
 
 ## Basic Usage
