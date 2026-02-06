@@ -46,7 +46,7 @@ class TiYoutubeplayerView: TiUIView {
         
         let autoplay = proxy.value(forKey: "autoplay") as? Bool ?? true
         let loop = proxy.value(forKey: "loop") as? Bool ?? true
-        let controls = proxy.value(forKey: "controls") as? Bool ?? false
+        let controls = proxy.value(forKey: "showControls") as? Bool ?? false
         let muted = proxy.value(forKey: "muted") as? Bool ?? true
         // let aspectFill = proxy.value(forKey: "aspectFill") as? Bool ?? true
         let scalingMode = proxy.value(forKey: "scalingMode") as? String ?? "SCALING_ASPECT_FIT"

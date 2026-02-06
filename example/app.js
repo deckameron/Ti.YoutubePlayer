@@ -1,4 +1,4 @@
-// Ti.YoutubePlayer - Elegant Example App
+// Ti.YoutubePlayer - Example App
 const YouTubePlayer = require('ti.youtubeplayer');
 
 // Create main window with gradient background
@@ -32,8 +32,8 @@ const titleLabel = Ti.UI.createLabel({
         fontSize: 28,
         fontWeight: 'bold'
     },
-    textAlign: 'center',
-    top: 40,
+    textAlign: Titanium.UI.TEXT_ALIGNMENT_CENTER,
+    top: Titanium.UI.statusBarHeight + 16,
     width: Ti.UI.FILL
 });
 
@@ -41,7 +41,7 @@ const titleLabel = Ti.UI.createLabel({
 const playerContainer = Ti.UI.createView({
     width: '90%',
     height: 220,
-    top: 20,
+    top: 24,
     borderRadius: 20,
     backgroundColor: '#000',
     shadowColor: '#000',
@@ -52,12 +52,13 @@ const playerContainer = Ti.UI.createView({
 
 // YouTube Player
 const player = YouTubePlayer.createPlayerView({
-    videoId: 'dQw4w9WgXcQ',
+    videoId: 'u00Y9e-Uxj0',
     autoplay: true,
     loop: true,
-    controls: false,
-    muted: true,
-    preferredQuality: 'hd1080',
+    showControls: false,
+    muted: false,
+    showFullscreenButton: true,
+    preferredQuality: YouTubePlayer.PLAYBACK_QUALITY_HD1080,
     width: Ti.UI.FILL,
     height: Ti.UI.FILL
 });
@@ -84,7 +85,7 @@ const videoTitle = Ti.UI.createLabel({
     left: 15,
     right: 15,
     top: 15,
-    width: Ti.UI.FILL
+    height: Ti.UI.SIZE
 });
 
 const videoAuthor = Ti.UI.createLabel({
@@ -97,7 +98,7 @@ const videoAuthor = Ti.UI.createLabel({
     right: 15,
     top: 5,
     bottom: 15,
-    width: Ti.UI.FILL
+    height: Ti.UI.SIZE
 });
 
 infoCard.add(videoTitle);
@@ -159,15 +160,12 @@ const controlsContainer = Ti.UI.createView({
 // Helper function to create control button
 function createControlButton(icon, action) {
     const button = Ti.UI.createButton({
-        title: icon,
+        image: icon,
         width: 60,
         height: 50,
         borderRadius: 12,
+        tintColor: "#ffffff",
         backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        color: '#ffffff',
-        font: {
-            fontSize: 24
-        },
         top: 10,
         left: 10
     });
@@ -186,29 +184,28 @@ function createControlButton(icon, action) {
     return button;
 }
 
-const playButton = createControlButton('▶️', function() {
+const playButton = createControlButton(Ti.UI.iOS.systemImage('play.fill'), function() {
     player.play();
 });
+controlsContainer.add(playButton);
 
-const pauseButton = createControlButton('⏸', function() {
+const pauseButton = createControlButton(Ti.UI.iOS.systemImage('pause.fill'), function() {
     player.pause();
 });
+controlsContainer.add(pauseButton);
 
-const stopButton = createControlButton('⏹', function() {
+const stopButton = createControlButton(Ti.UI.iOS.systemImage('stop.fill'), function() {
     player.stop();
 });
+controlsContainer.add(stopButton);
 
-const muteButton = createControlButton('🔇', function() {
+const muteButton = createControlButton(Ti.UI.iOS.systemImage('speaker.wave.2.fill'), function() {
     if (player.isMuted()) {
         player.unmute();
     } else {
         player.mute();
     }
 });
-
-controlsContainer.add(playButton);
-controlsContainer.add(pauseButton);
-controlsContainer.add(stopButton);
 controlsContainer.add(muteButton);
 
 // Speed controls
@@ -313,9 +310,9 @@ const videosButtonContainer = Ti.UI.createView({
 });
 
 const videos = [
-    { id: 'dQw4w9WgXcQ', name: 'Video 1' },
-    { id: 'kJQP7kiw5Fk', name: 'Video 2' },
-    { id: '9bZkp7q19f0', name: 'Video 3' }
+    { id: 'nYSDC3cHoZs', name: 'Video 1' },
+    { id: 'n_GFN3a0yj0', name: 'Video 2' },
+    { id: '83zPG4aCyqk', name: 'Video 3' }
 ];
 
 videos.forEach(function(video) {
@@ -393,7 +390,7 @@ player.addEventListener('metadataReceived', function(e) {
 });
 
 player.addEventListener('muteChanged', function(e) {
-    muteButton.title = e.muted ? '🔇' : '🔊';
+    muteButton.image = e.muted ? Ti.UI.iOS.systemImage('speaker.slash.fill') : Ti.UI.iOS.systemImage('speaker.wave.2.fill');
     Ti.API.info('Muted: ' + e.muted);
 });
 

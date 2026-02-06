@@ -90,11 +90,18 @@ class TiYoutubeplayerViewProxy: TiViewProxy {
     }
     
     @objc(setPlaybackRate:)
-    func setPlaybackRate(args: [Any]?) {
-        guard let rate = args?.first as? NSNumber else {
+    func setPlaybackRate(value: Any) {
+        let rate: Double
+        
+        if let numberValue = value as? NSNumber {
+            rate = numberValue.doubleValue
+        } else if let arrayValue = value as? [Any], let firstValue = arrayValue.first as? NSNumber {
+            rate = firstValue.doubleValue
+        } else {
             return
         }
-        playerView.setPlaybackRate(rate: rate.doubleValue)
+        
+        playerView.setPlaybackRate(rate: rate)
     }
     
     @objc(setPlaybackQuality:)

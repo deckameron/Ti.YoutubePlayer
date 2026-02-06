@@ -82,7 +82,7 @@ const player = YouTubePlayer.createPlayerView({
     videoId: 'dQw4w9WgXcQ',
     autoplay: true,
     loop: true,
-    controls: false,
+    showControls: false,
     muted: true,
     preferredQuality: YouTubePlayer.PLAYBACK_QUALITY_HIGH_RESOLUTION,
     width: Ti.UI.FILL,
@@ -99,13 +99,14 @@ win.add(player);
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `videoId` | String | **required** | YouTube video ID |
-| `autoplay` | Boolean | `true` | Start playback automatically |
+| `scalingMode` | String | `true` | `'SCALING_ASPECT_FIT'` or `'SCALING_ASPECT_FILL'` |
 | `loop` | Boolean | `true` | Loop playback |
-| `controls` | Boolean | `false` | Show YouTube controls |
+| `showControls` | Boolean | `false` | Show YouTube controls |
 | `muted` | Boolean | `true` | Start muted |
 | `showCaptions` | Boolean | `false` | Show captions |
 | `showFullscreenButton` | Boolean | `false` | Show fullscreen button |
 | `preferredQuality` | String | `'hd1080'` | Preferred quality (`'small'`, `'medium'`, `'large'`, `'hd720'`, `'hd1080'`, `'highres'`) |
+| `autoplay` | Boolean | `true` | Start playback automatically |
 
 **Note:** All standard `Ti.UI.View` properties also work (`width`, `height`, `top`, `left`, `backgroundColor`, etc.)
 
@@ -577,7 +578,7 @@ const YouTubePlayer = require('ti.youtubeplayer');
 const player = YouTubePlayer.createPlayerView({
     videoId: 'dQw4w9WgXcQ',
     autoplay: false,
-    controls: false,
+    showControls: false,
     width: Ti.UI.FILL,
     height: 300
 });
