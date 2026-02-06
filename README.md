@@ -5,12 +5,12 @@ A native Titanium module for iOS that enables inline YouTube video playback with
 ![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
 
 <p align="center">
-  <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_1?raw=true"
+  <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_1.png?raw=true"
        width="300"
-       alt="Example" />
-  <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/iscreenshot_2?raw=true"
+       alt="screenshot_1" />
+  <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_2.png?raw=true"
        width="300"
-       alt="Example" />
+       alt="screenshot_2" />
 </p>
 
 ### Roadmap
