@@ -53,6 +53,7 @@ class TiYoutubeplayerView: TiUIView {
         let showCaptions = proxy.value(forKey: "showCaptions") as? Bool ?? false
         let showFullscreenButton = proxy.value(forKey: "showFullscreenButton") as? Bool ?? false
         let keyboardControlsDisabled = proxy.value(forKey: "keyboardControlsDisabled") as? Bool ?? true
+        let startSeconds = proxy.value(forKey: "startSeconds") as? Double ?? 0.0
         
         if let quality = proxy.value(forKey: "preferredQuality") as? String {
             self.preferredQuality = quality
@@ -120,6 +121,12 @@ class TiYoutubeplayerView: TiUIView {
         if muted {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 self?.mute()
+            }
+        }
+        
+        if startSeconds > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                self?.seek(to: startSeconds)
             }
         }
         

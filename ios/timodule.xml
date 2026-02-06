@@ -5,6 +5,12 @@
 		configuration in <iphone> and <android> sections
 	-->
 	<iphone>
+		<plist>
+			<dict>
+				<key>NSAllowsArbitraryLoadsInWebContent</key>
+				<true/>
+			</dict>
+		</plist>
 	</iphone>
 	<android xmlns:android="http://schemas.android.com/apk/res/android">
 	</android>
