@@ -116,7 +116,10 @@ class TiYoutubeplayerView: TiUIView {
         self.addSubview(hostingController.view)
         self.playerHostingController = hostingController
         
-        setupObservers()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            self.setupObservers()
+        }
         
         if muted {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
@@ -207,7 +210,14 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     private func setupObservers() {
-        // Observer: Estado do player (ready, error, idle)
+        
+        guard let youtubePlayer = self.youtubePlayer else {
+            debugPrint("[ERROR] YouTubePlayer is nil in setupObservers")
+            return
+        }
+        
+        cancellables.removeAll()
+        
         youtubePlayer.statePublisher
             .sink { [weak self] state in
                 guard let self = self else { return }
@@ -229,7 +239,6 @@ class TiYoutubeplayerView: TiUIView {
             }
             .store(in: &cancellables)
         
-        // Observer: Estado de playback (playing, paused, ended, etc)
         youtubePlayer.playbackStatePublisher
             .sink { [weak self] playbackState in
                 guard let self = self else { return }
@@ -270,7 +279,6 @@ class TiYoutubeplayerView: TiUIView {
             }
             .store(in: &cancellables)
         
-        // Observer: Qualidade de playback
         youtubePlayer.playbackQualityPublisher
             .sink { [weak self] quality in
                 guard let self = self else { return }
@@ -300,7 +308,6 @@ class TiYoutubeplayerView: TiUIView {
             }
             .store(in: &cancellables)
         
-        // Observer: Taxa de reprodução (playback rate)
         youtubePlayer.playbackRatePublisher
             .sink { [weak self] rate in
                 guard let self = self else { return }
@@ -309,7 +316,6 @@ class TiYoutubeplayerView: TiUIView {
             }
             .store(in: &cancellables)
         
-        // Observer: Metadados (título, autor, videoId)
         youtubePlayer.playbackMetadataPublisher
             .sink { [weak self] metadata in
                 guard let self = self else { return }

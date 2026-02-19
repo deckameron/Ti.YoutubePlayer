@@ -18,11 +18,11 @@
 		</data>
 		<key>Info.plist</key>
 		<data>
-		NYXfUvwrRWC+Sw2bTAKhUDlmZY8=
+		jRxAUkbdWo1mBM7bCPSbNC8CWVM=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.abi.json</key>
 		<data>
-		D1G4a+r1kVgalR2F+1Rt2qybJuY=
+		jy8CA9unw0edUG07EpHpuxHHPY8=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.private.swiftinterface</key>
 		<data>
@@ -42,7 +42,7 @@
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.abi.json</key>
 		<data>
-		D1G4a+r1kVgalR2F+1Rt2qybJuY=
+		jy8CA9unw0edUG07EpHpuxHHPY8=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.private.swiftinterface</key>
 		<data>
@@ -92,7 +92,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			M2HbykioCiIn/aoPgQwgPGgr3jGQnx+NMY/eyFWzWlo=
+			TjiGJ27uvyJHd6ujwYvlggaPrmWYWwWvDCu8TEXbwjg=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.private.swiftinterface</key>
@@ -127,7 +127,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			M2HbykioCiIn/aoPgQwgPGgr3jGQnx+NMY/eyFWzWlo=
+			TjiGJ27uvyJHd6ujwYvlggaPrmWYWwWvDCu8TEXbwjg=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.private.swiftinterface</key>
