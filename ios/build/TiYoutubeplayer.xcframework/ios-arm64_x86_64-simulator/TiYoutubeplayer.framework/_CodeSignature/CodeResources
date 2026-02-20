@@ -22,7 +22,7 @@
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.abi.json</key>
 		<data>
-		jy8CA9unw0edUG07EpHpuxHHPY8=
+		OF70GM5U4jTCrLKCotAbFb2GKVE=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.private.swiftinterface</key>
 		<data>
@@ -38,11 +38,11 @@
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftmodule</key>
 		<data>
-		ISpGbSMAkFQVOYTG+m3FwBykMu4=
+		CHojeraLO1T9L2rvIJ5zjhXgWNQ=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.abi.json</key>
 		<data>
-		jy8CA9unw0edUG07EpHpuxHHPY8=
+		OF70GM5U4jTCrLKCotAbFb2GKVE=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.private.swiftinterface</key>
 		<data>
@@ -58,7 +58,7 @@
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftmodule</key>
 		<data>
-		X5mJRVA/6lFv0ibR8C6tYOEKpJg=
+		HEwF+VdSzsFAP0FaOTQ0ePBkr0c=
 		</data>
 		<key>Modules/module.modulemap</key>
 		<data>
@@ -92,7 +92,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			TjiGJ27uvyJHd6ujwYvlggaPrmWYWwWvDCu8TEXbwjg=
+			JI8OhzW5FnSTJxjxHfe4cv1zmK096dKMG9O4UsOb5yk=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.private.swiftinterface</key>
@@ -120,14 +120,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Xgt2ttpcdQ9SJaUvJaLx4kwkKrHYs7dHsHFBKpax1+E=
+			smio2SMcXT+HjoLhAgpvfE2o3mSYstMb418H3qEAGrs=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.abi.json</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			TjiGJ27uvyJHd6ujwYvlggaPrmWYWwWvDCu8TEXbwjg=
+			JI8OhzW5FnSTJxjxHfe4cv1zmK096dKMG9O4UsOb5yk=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.private.swiftinterface</key>
@@ -155,7 +155,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			EaaMwrN0h4qk9jc4EzvWUmPQPDPNj258Vx0myQJR6Ls=
+			beHrYOP0pjxqtc5BKMOCeIEA6piwlifJaNjUBWknhEk=
 			</data>
 		</dict>
 		<key>Modules/module.modulemap</key>

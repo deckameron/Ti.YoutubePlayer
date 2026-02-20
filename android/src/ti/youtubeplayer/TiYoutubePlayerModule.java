@@ -19,6 +19,33 @@ public class TiYoutubePlayerModule extends KrollModule {
 
 	private static final String TAG = "TiYoutubeplayerModule";
 
+	@Kroll.constant
+	public static final int SCALING_ASPECT_FIT = 0;
+
+	@Kroll.constant
+	public static final int SCALING_ASPECT_FILL = 1;
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_SMALL = "small";
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_MEDIUM = "medium";
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_LARGE = "large";
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_HD720 = "hd720";
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_HD1080 = "hd1080";
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_HIGH_RESOLUTION = "highres";
+
+	@Kroll.constant
+	public static final String PLAYBACK_QUALITY_AUTO = "auto";
+
 	public TiYoutubePlayerModule() {
 		super();
 	}

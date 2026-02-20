@@ -86,13 +86,13 @@ class TiYoutubeplayerModule: TiModule {
         return YouTubePlayer.PlaybackQuality.highResolution.name
     }
     
-    @objc(SCALING_ASPECT_FILL)
-    var SCALING_ASPECT_FILL: String {
-        return "SCALING_ASPECT_FILL"
+    @objc(SCALING_ASPECT_FIT)
+    var SCALING_ASPECT_FIT: Int {
+        return 0
     }
     
-    @objc(SCALING_ASPECT_FIT)
-    var SCALING_ASPECT_FIT: String {
-        return "SCALING_ASPECT_FIT"
-    }    
+    @objc(SCALING_ASPECT_FILL)
+    var SCALING_ASPECT_FILL: Int {
+        return 1
+    }
 }

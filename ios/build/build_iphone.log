@@ -1,5 +1,5 @@
 
-2/19/2026, 7:37:33 AM
+2/20/2026, 9:41:59 AM
 
 Operating System
   Name                        = macOS
@@ -21,4 +21,4 @@ Titanium SDK
   Target Platform             = iphone
 
 Command
-  /Users/douglas/.nvm/versions/node/v20.18.1/bin/node /Users/douglas/.nvm/versions/node/v20.18.1/bin/ti build -p iphone --build-only
+  /Users/douglas/.nvm/versions/node/v20.18.1/bin/node /Users/douglas/.nvm/versions/node/v20.18.1/bin/ti build -p ios --build-only

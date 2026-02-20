@@ -42,8 +42,12 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
     private String preferredQuality = "hd1080";
     private final boolean shouldLoop;
     private boolean isReleased = false;
+    private int scalingMode = 0; // Default SCALING_ASPECT_FIT
 
-    // NOVO - Runnables para poder cancelar
+    private float videoAspectRatio = 16f / 9f; // Default 16:9
+    private int videoWidth = 0;
+    private int videoHeight = 0;
+
     private Runnable readyRunnable;
     private Runnable loadVideoReadyRunnable;
     private Runnable cueVideoReadyRunnable;
@@ -65,6 +69,7 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        containerView.setClipChildren(true);
 
         // Get properties
         String videoId = TiConvert.toString(proxy.getProperty("videoId"));
@@ -75,12 +80,17 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
         boolean showCaptions = TiConvert.toBoolean(proxy.getProperty("showCaptions"), false);
         boolean showFullscreenButton = TiConvert.toBoolean(proxy.getProperty("showFullscreenButton"), false);
 
-        // CORRIGIDO - shouldLoop é instância agora
         this.shouldLoop = loop;
 
         String quality = TiConvert.toString(proxy.getProperty("preferredQuality"));
         if (quality != null) {
             preferredQuality = quality;
+        }
+
+        Object scalingModeObj = proxy.getProperty("scalingMode");
+        if (scalingModeObj != null) {
+            scalingMode = TiConvert.toInt(scalingModeObj, 0);
+            Log.d(TAG, "[DEBUG] Scaling mode: " + (scalingMode == 1 ? "ASPECT_FILL" : "ASPECT_FIT"));
         }
 
         if (videoId != null) {
@@ -90,6 +100,7 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
         setNativeView(containerView);
 
+        lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
         lifecycleRegistry.setCurrentState(Lifecycle.State.STARTED);
         lifecycleRegistry.setCurrentState(Lifecycle.State.RESUMED);
     }
@@ -146,10 +157,13 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                                   boolean showCaptions, boolean showFullscreenButton) {
         // Create player view
         youTubePlayerView = new YouTubePlayerView(proxy.getActivity());
-        youTubePlayerView.setLayoutParams(new FrameLayout.LayoutParams(
+
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
-        ));
+        );
+        layoutParams.gravity = android.view.Gravity.CENTER;
+        youTubePlayerView.setLayoutParams(layoutParams);
 
         youTubePlayerView.setEnableAutomaticInitialization(false);
 
@@ -234,6 +248,10 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                         stateCode = 1;
                         Log.d(TAG, "[DEBUG] Player state: PLAYING");
 
+                        if (view.videoWidth > 0 && view.videoHeight > 0) {
+                            view.applyCalculatedScaling();
+                        }
+
                         if (view.preferredQuality != null && !view.preferredQuality.isEmpty()) {
                             view.applyPreferredQuality();
                         }
@@ -313,12 +331,8 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
             public void onVideoId(@NonNull YouTubePlayer player, @NonNull String videoId) {
                 PlayerView view = weakThis.get();
                 if (view == null || view.isReleased) return;
-
-                KrollDict event = new KrollDict();
-                event.put("videoId", videoId);
-                view.fireEvent("metadataReceived", event);
-
                 Log.d(TAG, "[DEBUG] Video ID: " + videoId);
+                view.fetchVideoMetadataWithDimensions(videoId);
             }
         }, options);
 
@@ -330,6 +344,64 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
         PlayerConstants.PlaybackQuality quality = mapStringToQuality(preferredQuality);
         Log.d(TAG, "[DEBUG] Preferred quality: " + preferredQuality + " (not directly supported by library)");
+    }
+
+    private void applyCalculatedScaling() {
+        if (youTubePlayerView == null || isReleased) return;
+
+        // Dimensões do container
+        int containerWidth = containerView.getWidth();
+        int containerHeight = containerView.getHeight();
+
+        if (containerWidth == 0 || containerHeight == 0) {
+            mainHandler.postDelayed(this::applyCalculatedScaling, 100);
+            return;
+        }
+
+        float containerAspect = (float) containerWidth / (float) containerHeight;
+
+        int playerWidth;
+        int playerHeight;
+
+        if (scalingMode == 1) {
+            // ASPECT_FILL
+            if (containerAspect > videoAspectRatio) {
+                playerWidth = containerWidth;
+                playerHeight = (int) (containerWidth / videoAspectRatio);
+            } else {
+                playerHeight = containerHeight;
+                playerWidth = (int) (containerHeight * videoAspectRatio);
+            }
+
+            Log.d(TAG, "[DEBUG] ASPECT_FILL: player=" + playerWidth + "x" + playerHeight +
+                    " container=" + containerWidth + "x" + containerHeight);
+        } else {
+            // ASPECT_FIT
+            if (containerAspect > videoAspectRatio) {
+                playerHeight = containerHeight;
+                playerWidth = (int) (containerHeight * videoAspectRatio);
+            } else {
+                playerWidth = containerWidth;
+                playerHeight = (int) (containerWidth / videoAspectRatio);
+            }
+
+            Log.d(TAG, "[DEBUG] ASPECT_FIT: player=" + playerWidth + "x" + playerHeight +
+                    " container=" + containerWidth + "x" + containerHeight);
+        }
+
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+                playerWidth,
+                playerHeight
+        );
+        layoutParams.gravity = android.view.Gravity.CENTER;
+
+        youTubePlayerView.setLayoutParams(layoutParams);
+    }
+
+    public void setScalingMode(int mode) {
+        scalingMode = mode;
+        Log.d(TAG, "[DEBUG] Scaling mode changed to: " + (mode == 1 ? "ASPECT_FILL" : "ASPECT_FIT"));
+        applyCalculatedScaling();
     }
 
     private int mapErrorToCode(PlayerConstants.PlayerError error) {
@@ -390,6 +462,72 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
             mainHandler.removeCallbacks(reloadReadyRunnable);
             reloadReadyRunnable = null;
         }
+    }
+
+    private void fetchVideoMetadataWithDimensions(String videoId) {
+        new Thread(() -> {
+            try {
+                String url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v="
+                        + videoId + "&format=json";
+
+                java.net.URL apiUrl = new java.net.URL(url);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) apiUrl.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    java.io.BufferedReader reader = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(conn.getInputStream())
+                    );
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    org.json.JSONObject json = new org.json.JSONObject(response.toString());
+
+                    String title = json.optString("title", "");
+                    String author = json.optString("author_name", "");
+                    int width = json.optInt("width", 0);
+                    int height = json.optInt("height", 0);
+
+                    if (width > 0 && height > 0) {
+                        videoWidth = width;
+                        videoHeight = height;
+                        videoAspectRatio = (float) videoWidth / (float) videoHeight;
+
+                        Log.d(TAG, "[DEBUG] Video dimensions: " + videoWidth + "x" + videoHeight +
+                                " (aspect: " + videoAspectRatio + ")");
+
+                        mainHandler.post(() -> {
+                            if (!isReleased) {
+                                applyCalculatedScaling();
+                            }
+                        });
+                    }
+
+                    mainHandler.post(() -> {
+                        if (!isReleased) {
+                            KrollDict event = new KrollDict();
+                            event.put("videoId", videoId);
+                            event.put("title", title);
+                            event.put("author", author);
+                            fireEvent("metadataReceived", event);
+
+                            Log.d(TAG, "[DEBUG] Metadata: title=" + title + ", author=" + author);
+                        }
+                    });
+                }
+
+                conn.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "[ERROR] Failed to fetch metadata: " + e.getMessage());
+            }
+        }).start();
     }
 
     // Public methods

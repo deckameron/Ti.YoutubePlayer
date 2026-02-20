@@ -79,6 +79,14 @@ public class PlayerViewProxy extends TiViewProxy {
         }
     }
 
+    // Scaling Mode
+    @Kroll.method
+    public void setScalingMode(int mode) {
+        if (view != null) {
+            ((PlayerView) view).setScalingMode(mode);
+        }
+    }
+
     // Set Playback Rate
     @Kroll.method
     public void setPlaybackRate(float rate) {

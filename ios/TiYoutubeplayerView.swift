@@ -6,7 +6,6 @@
 //  Copyright (c) 2026 Upflix Inc. All rights reserved.
 //
 
-
 import UIKit
 import TitaniumKit
 import YouTubePlayerKit
@@ -21,6 +20,12 @@ class TiYoutubeplayerView: TiUIView {
     private var cancellables = Set<AnyCancellable>()
     var isMuted: Bool = true
     private var preferredQuality: String = "hd1080"
+    private var scalingMode: Int = 0 // 0 = FIT, 1 = FILL
+    
+    private var videoAspectRatio: CGFloat = 16.0 / 9.0 // Default 16:9
+    private var videoWidth: Int = 0
+    private var videoHeight: Int = 0
+    private var currentVideoId: String = ""
     
     override func initializeState() {
         super.initializeState()
@@ -34,6 +39,10 @@ class TiYoutubeplayerView: TiUIView {
         super.frameSizeChanged(frame, bounds: bounds)
         
         playerHostingController?.view.frame = bounds
+        
+        if videoWidth > 0 && videoHeight > 0 {
+            applyCalculatedScaling()
+        }
     }
     
     override func configurationSet() {
@@ -44,16 +53,21 @@ class TiYoutubeplayerView: TiUIView {
             return
         }
         
+        currentVideoId = videoId
+        
         let autoplay = proxy.value(forKey: "autoplay") as? Bool ?? true
         let loop = proxy.value(forKey: "loop") as? Bool ?? true
         let controls = proxy.value(forKey: "showControls") as? Bool ?? false
         let muted = proxy.value(forKey: "muted") as? Bool ?? true
-        // let aspectFill = proxy.value(forKey: "aspectFill") as? Bool ?? true
-        let scalingMode = proxy.value(forKey: "scalingMode") as? String ?? "SCALING_ASPECT_FIT"
         let showCaptions = proxy.value(forKey: "showCaptions") as? Bool ?? false
         let showFullscreenButton = proxy.value(forKey: "showFullscreenButton") as? Bool ?? false
         let keyboardControlsDisabled = proxy.value(forKey: "keyboardControlsDisabled") as? Bool ?? true
         let startSeconds = proxy.value(forKey: "startSeconds") as? Double ?? 0.0
+        
+        if let mode = proxy.value(forKey: "scalingMode") as? Int {
+            scalingMode = mode
+            debugPrint("[DEBUG] Scaling mode: \(mode == 1 ? "ASPECT_FILL" : "ASPECT_FIT")")
+        }
         
         if let quality = proxy.value(forKey: "preferredQuality") as? String {
             self.preferredQuality = quality
@@ -74,47 +88,18 @@ class TiYoutubeplayerView: TiUIView {
             parameters: parameters
         )
         
-        let configuredView: AnyView
+        let playerView = YouTubePlayerView(youtubePlayer) { state in }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         
-        if scalingMode == "SCALING_ASPECT_FILL" {
-            // FULL FILL - força o vídeo a preencher toda área
-            configuredView = AnyView(
-                GeometryReader { geometry in
-                    let videoAspect: CGFloat = 16.0 / 9.0
-                    let containerAspect = geometry.size.width / geometry.size.height
-                    
-                    // Calcula o scale necessário
-                    let scale: CGFloat
-                    if containerAspect > videoAspect {
-                        // Container mais largo que o vídeo - escala pela largura
-                        scale = 1.0
-                    } else {
-                        // Container mais alto que o vídeo - escala pela altura
-                        scale = (geometry.size.height / geometry.size.width) * videoAspect
-                    }
-                    
-                    return YouTubePlayerView(self.youtubePlayer) { state in }
-                        .frame(width: geometry.size.width * scale, height: geometry.size.width * scale / videoAspect)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                        .clipped()
-                }
-                    .clipped()
-            )
-        } else {
-            // FIT - mantém aspect ratio
-            configuredView = AnyView(
-                YouTubePlayerView(youtubePlayer) { state in }
-                    .aspectRatio(16/9, contentMode: .fit)
-            )
-        }
-        
-        let hostingController = UIHostingController(rootView: configuredView)
+        let hostingController = UIHostingController(rootView: AnyView(playerView))
         hostingController.view.backgroundColor = .clear
         hostingController.view.frame = self.bounds
-        hostingController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         
         self.addSubview(hostingController.view)
         self.playerHostingController = hostingController
+        
+        fetchVideoMetadata(videoId: videoId)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }
@@ -138,10 +123,108 @@ class TiYoutubeplayerView: TiUIView {
         }
     }
     
+    private func fetchVideoMetadata(videoId: String) {
+        Task {
+            do {
+                let urlString = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=\(videoId)&format=json"
+                guard let url = URL(string: urlString) else { return }
+                
+                let (data, _) = try await URLSession.shared.data(from: url)
+                
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    let title = json["title"] as? String ?? ""
+                    let author = json["author_name"] as? String ?? ""
+                    let width = json["width"] as? Int ?? 0
+                    let height = json["height"] as? Int ?? 0
+                    
+                    await MainActor.run {
+                        if width > 0 && height > 0 {
+                            self.videoWidth = width
+                            self.videoHeight = height
+                            self.videoAspectRatio = CGFloat(width) / CGFloat(height)
+                            
+                            debugPrint("[DEBUG] Video dimensions: \(width)x\(height) (aspect: \(self.videoAspectRatio))")
+                            
+                            // Aplica scaling assim que temos as dimensões
+                            self.applyCalculatedScaling()
+                        }
+                        
+                        // Fire metadata event
+                        self.proxy.fireEvent("metadataReceived", with: [
+                            "videoId": videoId,
+                            "title": title,
+                            "author": author
+                        ])
+                        
+                        debugPrint("[DEBUG] Metadata: title=\(title), author=\(author)")
+                    }
+                }
+            } catch {
+                debugPrint("[ERROR] Failed to fetch metadata: \(error)")
+            }
+        }
+    }
+    
+    private func applyCalculatedScaling() {
+        guard let hostingController = playerHostingController else { return }
+        guard videoAspectRatio > 0 else { return }
+        
+        let containerWidth = self.bounds.width
+        let containerHeight = self.bounds.height
+        
+        guard containerWidth > 0 && containerHeight > 0 else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.applyCalculatedScaling()
+            }
+            return
+        }
+        
+        let containerAspect = containerWidth / containerHeight
+        
+        let playerWidth: CGFloat
+        let playerHeight: CGFloat
+        
+        if scalingMode == 1 {
+            // ASPECT_FILL
+            if containerAspect > videoAspectRatio {
+                playerWidth = containerWidth
+                playerHeight = containerWidth / videoAspectRatio
+            } else {
+                playerHeight = containerHeight
+                playerWidth = containerHeight * videoAspectRatio
+            }
+            
+            debugPrint("[DEBUG] ASPECT_FILL: player=\(playerWidth)x\(playerHeight) container=\(containerWidth)x\(containerHeight)")
+        } else {
+            // ASPECT_FIT
+            if containerAspect > videoAspectRatio {
+                playerHeight = containerHeight
+                playerWidth = containerHeight * videoAspectRatio
+            } else {
+                playerWidth = containerWidth
+                playerHeight = containerWidth / videoAspectRatio
+            }
+            
+            debugPrint("[DEBUG] ASPECT_FIT: player=\(playerWidth)x\(playerHeight) container=\(containerWidth)x\(containerHeight)")
+        }
+        
+        hostingController.view.frame = CGRect(
+            x: (containerWidth - playerWidth) / 2,
+            y: (containerHeight - playerHeight) / 2,
+            width: playerWidth,
+            height: playerHeight
+        )
+    }
+    
+    func setScalingMode(mode: Int) {
+        scalingMode = mode
+        debugPrint("[DEBUG] Scaling mode changed to: \(mode == 1 ? "ASPECT_FILL" : "ASPECT_FIT")")
+        applyCalculatedScaling()
+    }
+    
     private func forceHighQuality() {
         setPlaybackQuality(quality: preferredQuality)
         
-        // Também tenta via JavaScript direto
         guard let hostingView = playerHostingController?.view else { return }
         
         func findWKWebView(in view: UIView) -> WKWebView? {
@@ -158,16 +241,13 @@ class TiYoutubeplayerView: TiUIView {
         
         guard let webView = findWKWebView(in: hostingView) else { return }
         
-        // JavaScript agressivo para forçar qualidade
         let js = """
         (function() {
             try {
-                // Tenta múltiplas vezes com delay
                 function setQuality() {
                     if (window.player && window.player.setPlaybackQuality) {
                         window.player.setPlaybackQuality('\(preferredQuality)');
                         
-                        // Também tenta setPlaybackQualityRange se disponível
                         if (window.player.setPlaybackQualityRange) {
                             window.player.setPlaybackQualityRange('\(preferredQuality)', '\(preferredQuality)');
                         }
@@ -179,7 +259,6 @@ class TiYoutubeplayerView: TiUIView {
                 }
                 setQuality();
                 
-                // Reforça a cada 2 segundos nos primeiros 10 segundos
                 var attempts = 0;
                 var interval = setInterval(function() {
                     attempts++;
@@ -210,7 +289,6 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     private func setupObservers() {
-        
         guard let youtubePlayer = self.youtubePlayer else {
             debugPrint("[ERROR] YouTubePlayer is nil in setupObservers")
             return
@@ -256,6 +334,11 @@ class TiYoutubeplayerView: TiUIView {
                 case .playing:
                     stateString = "playing"
                     stateCode = 1
+                    
+                    if self.videoWidth > 0 && self.videoHeight > 0 {
+                        self.applyCalculatedScaling()
+                    }
+                    
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         self.forceHighQuality()
                     }
@@ -313,28 +396,6 @@ class TiYoutubeplayerView: TiUIView {
                 guard let self = self else { return }
                 
                 self.proxy.fireEvent("playbackRateChange", with: ["rate": rate.value])
-            }
-            .store(in: &cancellables)
-        
-        youtubePlayer.playbackMetadataPublisher
-            .sink { [weak self] metadata in
-                guard let self = self else { return }
-                
-                var metadataDict: [String: Any] = [:]
-                
-                if let title = metadata.title {
-                    metadataDict["title"] = title
-                }
-                if let author = metadata.author {
-                    metadataDict["author"] = author
-                }
-                if let videoId = metadata.videoId {
-                    metadataDict["videoId"] = videoId
-                }
-                
-                if !metadataDict.isEmpty {
-                    self.proxy.fireEvent("metadataReceived", with: metadataDict)
-                }
             }
             .store(in: &cancellables)
     }
@@ -409,11 +470,8 @@ class TiYoutubeplayerView: TiUIView {
     
     func setPlaybackQuality(quality: String) {
         Task { @MainActor in
-            // YouTubePlayerKit não expõe setPlaybackQuality diretamente
-            // Mas podemos tentar forçar via JavaScript evaluation
             guard let hostingView = playerHostingController?.view else { return }
             
-            // Procura o WKWebView
             @MainActor
             func findWKWebView(in view: UIView) -> WKWebView? {
                 if let webView = view as? WKWebView {
@@ -432,7 +490,6 @@ class TiYoutubeplayerView: TiUIView {
                 return
             }
             
-            // Tenta setar a qualidade via JavaScript
             let js = """
             (function() {
                 try {
@@ -544,6 +601,9 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     func cueVideo(videoId: String, startSeconds: Double = 0) {
+        currentVideoId = videoId
+        fetchVideoMetadata(videoId: videoId)
+        
         let startTime = Measurement(value: startSeconds, unit: UnitDuration.seconds)
         Task { @MainActor in
             let source = YouTubePlayer.Source.video(id: videoId)
@@ -552,6 +612,9 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     func loadVideo(videoId: String, startSeconds: Double = 0) {
+        currentVideoId = videoId
+        fetchVideoMetadata(videoId: videoId)
+        
         let startTime = Measurement(value: startSeconds, unit: UnitDuration.seconds)
         Task { @MainActor in
             let source = YouTubePlayer.Source.video(id: videoId)

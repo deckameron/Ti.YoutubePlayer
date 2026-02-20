@@ -1,8 +1,10 @@
 # Ti.YoutubePlayer
 
-A native Titanium module for iOS that enables inline YouTube video playback without forcing the native iOS player. Built with  [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit).
+A native Titanium module that enables inline YouTube video playback without forcing the native OS player. 
+- Built with [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) for iOS.
+- Built with [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) for Android.
 
-![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
+![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
 
 <p align="center">
   <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_1.png?raw=true"
@@ -13,28 +15,23 @@ A native Titanium module for iOS that enables inline YouTube video playback with
        alt="screenshot_2" />
 </p>
 
-### Roadmap
-
-- [x] iOS support
-- [ ] Android support
 
 ## Features
 
 -   ✅ Inline playback (no forced fullscreen)
 -   ✅ Configurable autoplay and loop
 -   ✅ Mute/unmute control
--   ✅ Video quality control
+-   ✅ Video quality control (Youtube is ignoring this for now)
 -   ✅ Adjustable playback speed (0.25x - 2x)
 -   ✅ Seek to any point in the video
 -   ✅ Detailed state and metadata events
--   ✅ No native iOS controls
+-   ✅ No native controls (Optional)
 -   ✅ Caption support
 -   ✅ Modern async API
 
 ## 📋 Requirements
 
 -   Titanium SDK 13.0.0+
--   iOS 14.0+
 
 
 ## Installation
@@ -57,11 +54,11 @@ Add the module to your `tiapp.xml`:
 
 ```xml
 <modules>
-    <module platform="iphone">ti.youtubeplayer</module>
+    <module>ti.youtubeplayer</module>
 </modules>
 ```
 
-### Permissions
+### Permissions (iOS only)
 
 Add microphone permission to `tiapp.xml` for recording:
 

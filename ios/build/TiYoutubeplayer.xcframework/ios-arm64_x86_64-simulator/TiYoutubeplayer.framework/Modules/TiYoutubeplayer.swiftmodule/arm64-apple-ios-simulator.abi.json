@@ -96,43 +96,85 @@
   "ConstValues": [
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/Classes\/TiYoutubeplayerModule.swift",
-      "kind": "StringLiteral",
-      "offset": 2418,
-      "length": 21,
-      "value": "\"SCALING_ASPECT_FILL\""
+      "kind": "IntegerLiteral",
+      "offset": 2413,
+      "length": 1,
+      "value": "0"
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/Classes\/TiYoutubeplayerModule.swift",
-      "kind": "StringLiteral",
-      "offset": 2533,
-      "length": 20,
-      "value": "\"SCALING_ASPECT_FIT\""
+      "kind": "IntegerLiteral",
+      "offset": 2507,
+      "length": 1,
+      "value": "1"
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
       "kind": "BooleanLiteral",
-      "offset": 497,
+      "offset": 496,
       "length": 4,
       "value": "true"
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
       "kind": "StringLiteral",
-      "offset": 545,
+      "offset": 544,
       "length": 8,
       "value": "\"hd1080\""
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
       "kind": "IntegerLiteral",
-      "offset": 19046,
+      "offset": 588,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "FloatLiteral",
+      "offset": 660,
+      "length": 4,
+      "value": "16.0"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "FloatLiteral",
+      "offset": 667,
+      "length": 3,
+      "value": "9.0"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "IntegerLiteral",
+      "offset": 721,
       "length": 1,
       "value": "0"
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
       "kind": "IntegerLiteral",
-      "offset": 19389,
+      "offset": 758,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "StringLiteral",
+      "offset": 801,
+      "length": 2,
+      "value": "\"\""
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "IntegerLiteral",
+      "offset": 21021,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "IntegerLiteral",
+      "offset": 21451,
       "length": 1,
       "value": "0"
     }
