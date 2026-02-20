@@ -8,58 +8,40 @@
  */
 package ti.youtubeplayer;
 
+import android.webkit.WebView;
+
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
-
 import org.appcelerator.titanium.TiApplication;
-import org.appcelerator.kroll.common.Log;
-import org.appcelerator.kroll.common.TiConfig;
 
+@Kroll.module(name="TiYoutubeplayer", id="ti.youtubeplayer")
+public class TiYoutubePlayerModule extends KrollModule {
 
-@Kroll.module(name="TiYoutubePlayer", id="ti.youtubeplayer")
-public class TiYoutubePlayerModule extends KrollModule
-{
+	private static final String TAG = "TiYoutubeplayerModule";
 
-	// Standard Debugging variables
-	private static final String LCAT = "TiYoutubePlayerModule";
-	private static final boolean DBG = TiConfig.LOGD;
-
-	// You can define constants with @Kroll.constant, for example:
-	// @Kroll.constant public static final String EXTERNAL_NAME = value;
-
-	public TiYoutubePlayerModule()
-	{
+	public TiYoutubePlayerModule() {
 		super();
 	}
 
 	@Kroll.onAppCreate
-	public static void onAppCreate(TiApplication app)
-	{
-		Log.d(LCAT, "inside onAppCreate");
-		// put module init code that needs to run when the application is created
+	public static void onAppCreate(TiApplication app) {
+		// Module initialization if needed
+        WebView.setWebContentsDebuggingEnabled(true);
+    }
+
+	@Override
+	public String getApiName() {
+		return "Ti.YoutubePlayer";
 	}
 
-	// Methods
 	@Kroll.method
-	public String example()
-	{
-		Log.d(LCAT, "example called");
-		return "hello world";
+	public PlayerViewProxy createPlayerView(@Kroll.argument(optional = true) Object args) {
+		PlayerViewProxy proxy = new PlayerViewProxy();
+
+		if (args != null) {
+			proxy.handleCreationArgs(this, new Object[] { args });
+		}
+
+		return proxy;
 	}
-
-	// Properties
-	@Kroll.getProperty
-	public String getExampleProp()
-	{
-		Log.d(LCAT, "get example property");
-		return "hello world";
-	}
-
-
-	@Kroll.setProperty
-	public void setExampleProp(String value) {
-		Log.d(LCAT, "set example property: " + value);
-	}
-
 }
-

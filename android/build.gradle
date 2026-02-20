@@ -1,5 +1,7 @@
+repositories {
+    mavenCentral()
+}
 
 dependencies {
-	// Add the module's library dependencies here.
-	// See:  https://developer.android.com/studio/build/dependencies
+    implementation 'com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0'
 }
