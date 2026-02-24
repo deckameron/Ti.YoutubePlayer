@@ -166,15 +166,22 @@
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
+      "kind": "Array",
+      "offset": 863,
+      "length": 2,
+      "value": "[]"
+    },
+    {
+      "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
       "kind": "IntegerLiteral",
-      "offset": 21021,
+      "offset": 23228,
       "length": 1,
       "value": "0"
     },
     {
       "filePath": "\/Users\/douglas\/Documents\/Modules\/Ti.YoutubePlayer\/ios\/TiYoutubeplayerView.swift",
       "kind": "IntegerLiteral",
-      "offset": 21451,
+      "offset": 23669,
       "length": 1,
       "value": "0"
     }
