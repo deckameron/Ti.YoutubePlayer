@@ -31,6 +31,11 @@ class TiYoutubeplayerViewProxy: TiViewProxy {
         playerView.pause()
     }
     
+    @objc(release:)
+    func release(args: [Any]?) {
+        playerView.cleanup()
+    }
+    
     @objc(stop:)
     func stop(args: [Any]?) {
         playerView.stop()
