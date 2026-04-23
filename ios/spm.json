@@ -9,7 +9,7 @@
         {
           "productName": "YouTubePlayerKit",
           "frameworkName": "YouTubePlayerKit",
-          "linkage": "host"
+          "linkage": "static"
         }
       ]
     }
