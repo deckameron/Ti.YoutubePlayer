@@ -6,7 +6,7 @@
 	<dict>
 		<key>Headers/TiYoutubeplayer-Swift.h</key>
 		<data>
-		gpefB7DvWSuxvyoYb4V/1eif9b0=
+		+BuTlAqTDIIZJ8IzugloH2ixG+s=
 		</data>
 		<key>Headers/TiYoutubeplayer.h</key>
 		<data>
@@ -18,51 +18,51 @@
 		</data>
 		<key>Info.plist</key>
 		<data>
-		7wJ8NyfAOwlog64N1spsss1MNzc=
+		f1imTJFoNKPoEd5Z0RGMnMaAIxg=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.abi.json</key>
 		<data>
-		+0T3pFqrHslVbw7M32omhJhVt/4=
+		4yLxRYrqu52qxHrksmvQkk47Hhg=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.private.swiftinterface</key>
 		<data>
-		kpWemfZxg+e7MR9n2encmwyoe4A=
+		uDLAv1+lB2UrfKEEXV4rA2OxQso=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftdoc</key>
 		<data>
-		2O0syayN85JNzqLkhQLLmqvW7lk=
+		JXWyUeG52Uv/ZuCKlBaogqDRkTQ=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftinterface</key>
 		<data>
-		kpWemfZxg+e7MR9n2encmwyoe4A=
+		uDLAv1+lB2UrfKEEXV4rA2OxQso=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftmodule</key>
 		<data>
-		ULWxIsn6HWajHAaewDjvZTSTb7A=
+		IkEtjeq2jHMN/QA3VpGBghn7Il0=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.abi.json</key>
 		<data>
-		+0T3pFqrHslVbw7M32omhJhVt/4=
+		4yLxRYrqu52qxHrksmvQkk47Hhg=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.private.swiftinterface</key>
 		<data>
-		6cJ3fF92NDXd8l0cgQlE8C3wJRI=
+		uT/pL9b1a5F7YNefg+2t3WRDZcw=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftdoc</key>
 		<data>
-		GWwoQX/15vDcRuRJWRGB/3qMm/E=
+		iJwqXrF4DMUQ0U5XdAwbhDC9qcw=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftinterface</key>
 		<data>
-		6cJ3fF92NDXd8l0cgQlE8C3wJRI=
+		uT/pL9b1a5F7YNefg+2t3WRDZcw=
 		</data>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftmodule</key>
 		<data>
-		t3/aAUJ5YgX4M25pSh4C+xdgyrg=
+		0BI/hUV3plWuLxocV2XPvSTUerg=
 		</data>
 		<key>Modules/module.modulemap</key>
 		<data>
-		Jtco6JxyrFLTvOmd7jGnnA0tQ80=
+		BsxDDJ3r/HGlboYqPlf3eupykS8=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -71,7 +71,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			rGG6D6NnWf1kaVrILm7YawgVU1NSabRWf6Yc1BGuxiI=
+			nL+UXpH25ahdkRUbJFJKGHhyUHTg+/ksk2uGyYOxTkY=
 			</data>
 		</dict>
 		<key>Headers/TiYoutubeplayer.h</key>
@@ -92,77 +92,77 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			yVqwQYPiBtbaMIamEU45+6GeFCGJ0Ufz7xG2GI5rXGk=
+			s6S8KrLcRu/URHoOVSjw3WAXSwvVoYX3GPQKdTgVxkg=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.private.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			A5iu4bD7HA+WBO8BeuUMQ31ZD2oXLchhcnrB7wPCFX8=
+			jLh06OUnK/TVjFUZ+7mGzYtF3FNF7E6hEnobROy546s=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftdoc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			JTqK3ElFKxC7KcXnEwbI3IG1SpxramgxVifwBf9pcBw=
+			zRfAKlHp5HR7NwtZzoDsCI0Jdsv0HA0rcN/JK4bc7yQ=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			A5iu4bD7HA+WBO8BeuUMQ31ZD2oXLchhcnrB7wPCFX8=
+			jLh06OUnK/TVjFUZ+7mGzYtF3FNF7E6hEnobROy546s=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/arm64-apple-ios-simulator.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			AWEeTa7jtn7Dc5FNhm3gP/wCbZKqFpPKtdwC+USL4oA=
+			4u9RR0IxgqPwcuL+GHneUjdvgi4uTJBcN4MqzfkFw4I=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.abi.json</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			yVqwQYPiBtbaMIamEU45+6GeFCGJ0Ufz7xG2GI5rXGk=
+			s6S8KrLcRu/URHoOVSjw3WAXSwvVoYX3GPQKdTgVxkg=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.private.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			SHEghwzssLGWrGSOUq9aug55PbOMCmU5+8LX54VK1no=
+			Sgw4aDPnP1RZNBrynQIY6Yg4sqfRuKdyNisfb+Cf/ok=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftdoc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			9P08hZxS9YwPnf3e7LyOxnTdiRPuYgTSYbje8evYwPo=
+			TV1USN44InWIU2hUspidVnyj4ypOl4bDrZnoz9FQ9Jc=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			SHEghwzssLGWrGSOUq9aug55PbOMCmU5+8LX54VK1no=
+			Sgw4aDPnP1RZNBrynQIY6Yg4sqfRuKdyNisfb+Cf/ok=
 			</data>
 		</dict>
 		<key>Modules/TiYoutubeplayer.swiftmodule/x86_64-apple-ios-simulator.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			jd50QOXtUs4YtJjvZKES9dGYkw2o56FFWhERgKsVyoc=
+			Qf5O+/TVcUjTBMnJ2bGuRGc/nyAx5vw6x0dp0Kyrf3E=
 			</data>
 		</dict>
 		<key>Modules/module.modulemap</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			8UZ3GIkHgcjTrkYP1GTCawhXjolbDmLGZqn2nntRZFs=
+			52jva8CifsveWCu+vxYdpA4pRREahJpb56+39hcqDf0=
 			</data>
 		</dict>
 	</dict>

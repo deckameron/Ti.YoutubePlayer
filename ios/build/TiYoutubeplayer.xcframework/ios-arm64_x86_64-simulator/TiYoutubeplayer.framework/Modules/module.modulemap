@@ -7,5 +7,4 @@ framework module TiYoutubeplayer {
 
 module TiYoutubeplayer.Swift {
   header "TiYoutubeplayer-Swift.h"
-  requires objc
 }

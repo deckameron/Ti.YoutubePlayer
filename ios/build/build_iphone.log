@@ -1,9 +1,9 @@
 
-2/27/2026, 9:32:29 AM
+4/23/2026, 5:31:35 PM
 
 Operating System
   Name                        = macOS
-  Version                     = 26.3
+  Version                     = 26.3.1
   Architecture                = 64-bit
   # CPUs                      = 10
   Memory                      = 64.0GB
@@ -16,9 +16,9 @@ Titanium CLI
   CLI Version                 = 8.1.5
 
 Titanium SDK
-  SDK Version                 = 13.1.1.GA
-  SDK Path                    = /Users/douglas/Library/Application Support/Titanium/mobilesdk/osx/13.1.1.GA
+  SDK Version                 = 13.2.0.GA
+  SDK Path                    = /Users/douglas/Library/Application Support/Titanium/mobilesdk/osx/13.2.0.GA
   Target Platform             = iphone
 
 Command
-  /Users/douglas/.nvm/versions/node/v20.18.1/bin/node /Users/douglas/.nvm/versions/node/v20.18.1/bin/ti build -p iphone --build-only
+  /Users/douglas/.nvm/versions/node/v20.18.1/bin/node /Users/douglas/.nvm/versions/node/v20.18.1/bin/ti build -p ios --build-only

@@ -13,7 +13,7 @@ import Combine
 import SwiftUI
 import WebKit
 
-// NOVO - Thread-safe task manager
+// Thread-safe task manager
 @MainActor
 private final class TaskManager {
     private var tasks: Set<Task<Void, Never>> = []
@@ -41,7 +41,7 @@ class TiYoutubeplayerView: TiUIView {
     private var preferredQuality: String = "hd1080"
     private var scalingMode: Int = 0 // 0 = FIT, 1 = FILL
     
-    private var videoAspectRatio: CGFloat = 16.0 / 9.0 // Default 16:9
+    private var videoAspectRatio: CGFloat = 16.0 / 9.0
     private var videoWidth: Int = 0
     private var videoHeight: Int = 0
     private var currentVideoId: String = ""
@@ -59,18 +59,9 @@ class TiYoutubeplayerView: TiUIView {
         self.clipsToBounds = true
     }
     
-    override func willMove(toWindow newWindow: UIWindow?) {
-        super.willMove(toWindow: newWindow)
-        if newWindow == nil {
-            Task { @MainActor in
-                self.cleanup()
-            }
-        }
-    }
-    
     override func frameSizeChanged(_ frame: CGRect, bounds: CGRect) {
         super.frameSizeChanged(frame, bounds: bounds)
-        
+            
         playerHostingController?.view.frame = bounds
         
         if videoWidth > 0 && videoHeight > 0 {
@@ -111,7 +102,7 @@ class TiYoutubeplayerView: TiUIView {
         super.configurationSet()
         
         guard let videoId = proxy.value(forKey: "videoId") as? String else {
-            debugPrint("[ERROR] videoId is required")
+            NSLog("[YOUTUBE] ERROR: videoId is required")
             return
         }
         
@@ -128,7 +119,6 @@ class TiYoutubeplayerView: TiUIView {
         
         if let mode = proxy.value(forKey: "scalingMode") as? Int {
             scalingMode = mode
-            debugPrint("[DEBUG] Scaling mode: \(mode == 1 ? "ASPECT_FILL" : "ASPECT_FIT")")
         }
         
         if let quality = proxy.value(forKey: "preferredQuality") as? String {
@@ -150,10 +140,12 @@ class TiYoutubeplayerView: TiUIView {
             parameters: parameters
         )
         
-        // Configura state observer IMEDIATAMENTE
         setupStateObserver()
         
-        let playerView = YouTubePlayerView(youtubePlayer) { state in }
+        // TESTE - Sempre usa SwiftUI agora (sem detecção de TableView)
+        NSLog("[YOUTUBE] Using SwiftUI player (testing without TableView detection)")
+        
+        let playerView = YouTubePlayerView(self.youtubePlayer) { state in }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
         
@@ -163,6 +155,19 @@ class TiYoutubeplayerView: TiUIView {
         
         self.addSubview(hostingController.view)
         self.playerHostingController = hostingController
+        
+        NSLog("[YOUTUBE] SwiftUI player created")
+        
+        // INSPECIONA DEPOIS
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self else { return }
+            
+            NSLog("[YOUTUBE] ===== SWIFTUI INSPECTION =====")
+            NSLog("[YOUTUBE] hostingController.view.frame: %@", NSCoder.string(for: hostingController.view.frame))
+            NSLog("[YOUTUBE] hostingController.view.superview: %@", hostingController.view.superview != nil ? "YES" : "NO")
+            NSLog("[YOUTUBE] self.subviews.count: %d", self.subviews.count)
+            NSLog("[YOUTUBE] ===== END INSPECTION =====")
+        }
         
         fetchVideoMetadata(videoId: videoId)
         
@@ -184,15 +189,20 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     func cleanup() {
-        guard !isReleased else { return }
+        guard !isReleased else {
+            NSLog("[YOUTUBE] Cleanup called but already released")
+            return
+        }
         isReleased = true
         
-        debugPrint("[DEBUG] Releasing YouTubePlayer view")
+        NSLog("[YOUTUBE] ===== CLEANUP CALLED =====")
+        NSLog("[YOUTUBE] Stack trace: %@", Thread.callStackSymbols.joined(separator: "\n"))
+        NSLog("[YOUTUBE] Releasing YouTubePlayer view")
         
         // Cancela observers
         cancellables.removeAll()
         
-        // Cancela tasks de forma thread-safe
+        // Cancela tasks
         Task { @MainActor [taskManager] in
             taskManager.cancelAll()
         }
@@ -234,8 +244,6 @@ class TiYoutubeplayerView: TiUIView {
                             self.videoHeight = height
                             self.videoAspectRatio = CGFloat(width) / CGFloat(height)
                             
-                            debugPrint("[DEBUG] Video dimensions: \(width)x\(height) (aspect: \(self.videoAspectRatio))")
-                            
                             self.applyCalculatedScaling()
                         }
                         
@@ -244,13 +252,11 @@ class TiYoutubeplayerView: TiUIView {
                             "title": title,
                             "author": author
                         ])
-                        
-                        debugPrint("[DEBUG] Metadata: title=\(title), author=\(author)")
                     }
                 }
             } catch {
                 if !Task.isCancelled {
-                    debugPrint("[ERROR] Failed to fetch metadata: \(error)")
+                    NSLog("[YOUTUBE] Failed to fetch metadata: \(error)")
                 }
             }
         }
@@ -258,6 +264,7 @@ class TiYoutubeplayerView: TiUIView {
     
     private func applyCalculatedScaling() {
         guard !isReleased else { return }
+    
         guard let hostingController = playerHostingController else { return }
         guard videoAspectRatio > 0 else { return }
         
@@ -285,8 +292,6 @@ class TiYoutubeplayerView: TiUIView {
                 playerHeight = containerHeight
                 playerWidth = containerHeight * videoAspectRatio
             }
-            
-            debugPrint("[DEBUG] ASPECT_FILL: player=\(playerWidth)x\(playerHeight) container=\(containerWidth)x\(containerHeight)")
         } else {
             // ASPECT_FIT
             if containerAspect > videoAspectRatio {
@@ -296,8 +301,6 @@ class TiYoutubeplayerView: TiUIView {
                 playerWidth = containerWidth
                 playerHeight = containerWidth / videoAspectRatio
             }
-            
-            debugPrint("[DEBUG] ASPECT_FIT: player=\(playerWidth)x\(playerHeight) container=\(containerWidth)x\(containerHeight)")
         }
         
         hostingController.view.frame = CGRect(
@@ -311,78 +314,14 @@ class TiYoutubeplayerView: TiUIView {
     func setScalingMode(mode: Int) {
         guard !isReleased else { return }
         scalingMode = mode
-        debugPrint("[DEBUG] Scaling mode changed to: \(mode == 1 ? "ASPECT_FILL" : "ASPECT_FIT")")
         applyCalculatedScaling()
     }
     
     private func forceHighQuality() {
         guard !isReleased else { return }
         setPlaybackQuality(quality: preferredQuality)
-        
-        guard let hostingView = playerHostingController?.view else { return }
-        
-        func findWKWebView(in view: UIView) -> WKWebView? {
-            if let webView = view as? WKWebView {
-                return webView
-            }
-            for subview in view.subviews {
-                if let found = findWKWebView(in: subview) {
-                    return found
-                }
-            }
-            return nil
-        }
-        
-        guard let webView = findWKWebView(in: hostingView) else { return }
-        
-        let js = """
-        (function() {
-            try {
-                function setQuality() {
-                    if (window.player && window.player.setPlaybackQuality) {
-                        window.player.setPlaybackQuality('\(preferredQuality)');
-                        
-                        if (window.player.setPlaybackQualityRange) {
-                            window.player.setPlaybackQualityRange('\(preferredQuality)', '\(preferredQuality)');
-                        }
-                        
-                        console.log('Quality set to \(preferredQuality)');
-                    } else {
-                        setTimeout(setQuality, 500);
-                    }
-                }
-                setQuality();
-                
-                var attempts = 0;
-                var interval = setInterval(function() {
-                    attempts++;
-                    if (attempts >= 5) {
-                        clearInterval(interval);
-                        return;
-                    }
-                    
-                    if (window.player && window.player.setPlaybackQuality) {
-                        window.player.setPlaybackQuality('\(preferredQuality)');
-                    }
-                }, 2000);
-                
-                return 'quality enforcement started';
-            } catch(e) {
-                return 'error: ' + e.message;
-            }
-        })();
-        """
-        
-        webView.evaluateJavaScript(js) { result, error in
-            if let error = error {
-                debugPrint("[ERROR] Failed to force quality: \(error)")
-            } else if let result = result as? String {
-                debugPrint("[DEBUG] Force quality result: \(result)")
-            }
-        }
     }
     
-    // Observa estado primeiro para garantir que player está ready
     private func setupStateObserver() {
         guard let youtubePlayer = self.youtubePlayer else { return }
         
@@ -395,12 +334,10 @@ class TiYoutubeplayerView: TiUIView {
                     self.proxy.fireEvent("playerStateChange", with: ["playerState": "idle"])
                 case .ready:
                     self.proxy.fireEvent("playerStateChange", with: ["playerState": "ready"])
-                    
-                    // Só configura outros observers quando player está ready
                     self.setupOtherObservers()
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                        guard let self = self, !self.isReleased, self.proxy != nil else { return }
+                        guard let self = self, !self.isReleased else { return }
                         self.forceHighQuality()
                     }
                 case .error(let error):
@@ -413,14 +350,8 @@ class TiYoutubeplayerView: TiUIView {
             .store(in: &cancellables)
     }
     
-    // Configura outros observers apenas quando player está ready
     private func setupOtherObservers() {
-        guard let youtubePlayer = self.youtubePlayer else {
-            debugPrint("[ERROR] YouTubePlayer is nil in setupOtherObservers")
-            return
-        }
-        
-        // NÃO remove cancellables - já tem statePublisher registrado
+        guard let youtubePlayer = self.youtubePlayer else { return }
         
         youtubePlayer.playbackStatePublisher
             .sink { [weak self] playbackState in
@@ -430,12 +361,8 @@ class TiYoutubeplayerView: TiUIView {
                 var stateCode = -1
                 
                 switch playbackState {
-                case .unstarted:
-                    stateString = "unstarted"
-                    stateCode = -1
-                case .ended:
-                    stateString = "ended"
-                    stateCode = 0
+                case .unstarted: stateString = "unstarted"; stateCode = -1
+                case .ended: stateString = "ended"; stateCode = 0
                 case .playing:
                     stateString = "playing"
                     stateCode = 1
@@ -445,20 +372,13 @@ class TiYoutubeplayerView: TiUIView {
                     }
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                        guard let self = self, !self.isReleased, self.proxy != nil else { return }
+                        guard let self = self, !self.isReleased else { return }
                         self.forceHighQuality()
                     }
-                case .paused:
-                    stateString = "paused"
-                    stateCode = 2
-                case .buffering:
-                    stateString = "buffering"
-                    stateCode = 3
-                case .cued:
-                    stateString = "cued"
-                    stateCode = 5
-                default:
-                    break
+                case .paused: stateString = "paused"; stateCode = 2
+                case .buffering: stateString = "buffering"; stateCode = 3
+                case .cued: stateString = "cued"; stateCode = 5
+                default: break
                 }
                 
                 self.proxy.fireEvent("playbackStateChange", with: [
@@ -473,24 +393,15 @@ class TiYoutubeplayerView: TiUIView {
                 guard let self = self, !self.isReleased, self.proxy != nil else { return }
                 
                 var qualityString = "unknown"
-                
                 switch quality {
-                case .auto:
-                    qualityString = "auto"
-                case .small:
-                    qualityString = "small"
-                case .medium:
-                    qualityString = "medium"
-                case .large:
-                    qualityString = "large"
-                case .hd720:
-                    qualityString = "hd720"
-                case .hd1080:
-                    qualityString = "hd1080"
-                case .highResolution:
-                    qualityString = "highres"
-                default:
-                    break
+                case .auto: qualityString = "auto"
+                case .small: qualityString = "small"
+                case .medium: qualityString = "medium"
+                case .large: qualityString = "large"
+                case .hd720: qualityString = "hd720"
+                case .hd1080: qualityString = "hd1080"
+                case .highResolution: qualityString = "highres"
+                default: break
                 }
                 
                 self.proxy.fireEvent("playbackQualityChange", with: ["quality": qualityString])
@@ -500,7 +411,6 @@ class TiYoutubeplayerView: TiUIView {
         youtubePlayer.playbackRatePublisher
             .sink { [weak self] rate in
                 guard let self = self, !self.isReleased, self.proxy != nil else { return }
-                
                 self.proxy.fireEvent("playbackRateChange", with: ["rate": rate.value])
             }
             .store(in: &cancellables)
@@ -509,55 +419,63 @@ class TiYoutubeplayerView: TiUIView {
     // MARK: - Public Methods
     
     func play() {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+        
+        guard youtubePlayer != nil else { return }
         createTask { @MainActor in
-            guard let player = self.youtubePlayer else { return }
-            try? await player.play()
+            try? await self.youtubePlayer.play()
         }
     }
     
     func pause() {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+                
+        guard youtubePlayer != nil else { return }
         createTask { @MainActor in
-            guard let player = self.youtubePlayer else { return }
-            try? await player.pause()
+            try? await self.youtubePlayer.pause()
         }
     }
     
     func stop() {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+        
+        guard youtubePlayer != nil else { return }
         createTask { @MainActor in
-            guard let player = self.youtubePlayer else { return }
-            try? await player.stop()
+            try? await self.youtubePlayer.stop()
         }
     }
     
     func mute() {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+        
+        guard youtubePlayer != nil else { return }
         createTask { @MainActor in
-            guard let player = self.youtubePlayer, self.proxy != nil else { return }
-            try? await player.mute()
+            try? await self.youtubePlayer.mute()
+            guard !self.isReleased, self.proxy != nil else { return }
             self.isMuted = true
             self.proxy.fireEvent("muteChanged", with: ["muted": true])
         }
     }
     
     func unmute() {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+                
+        guard youtubePlayer != nil else { return }
         createTask { @MainActor in
-            guard let player = self.youtubePlayer, self.proxy != nil else { return }
-            try? await player.unmute()
+            try? await self.youtubePlayer.unmute()
+            guard !self.isReleased, self.proxy != nil else { return }
             self.isMuted = false
             self.proxy.fireEvent("muteChanged", with: ["muted": false])
         }
     }
     
     func seek(to seconds: Double) {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+        
+        guard youtubePlayer != nil else { return }
         let time = Measurement(value: seconds, unit: UnitDuration.seconds)
         createTask { @MainActor in
-            guard let player = self.youtubePlayer else { return }
-            try? await player.seek(to: time, allowSeekAhead: true)
+            try? await self.youtubePlayer.seek(to: time, allowSeekAhead: true)
         }
     }
     
@@ -566,6 +484,7 @@ class TiYoutubeplayerView: TiUIView {
             completion(nil)
             return
         }
+        
         createTask { @MainActor in
             guard let duration = try? await self.youtubePlayer.getDuration() else {
                 completion(nil)
@@ -580,6 +499,7 @@ class TiYoutubeplayerView: TiUIView {
             completion(nil)
             return
         }
+        
         createTask { @MainActor in
             guard let currentTime = try? await self.youtubePlayer.getCurrentTime() else {
                 completion(nil)
@@ -590,27 +510,23 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     func setPlaybackQuality(quality: String) {
-        guard !isReleased, youtubePlayer != nil else { return }
+        guard !isReleased else { return }
+                
+        guard youtubePlayer != nil else { return }
+        
         createTask { @MainActor in
             guard let hostingView = self.playerHostingController?.view else { return }
             
             @MainActor
             func findWKWebView(in view: UIView) -> WKWebView? {
-                if let webView = view as? WKWebView {
-                    return webView
-                }
+                if let webView = view as? WKWebView { return webView }
                 for subview in view.subviews {
-                    if let found = findWKWebView(in: subview) {
-                        return found
-                    }
+                    if let found = findWKWebView(in: subview) { return found }
                 }
                 return nil
             }
             
-            guard let webView = findWKWebView(in: hostingView) else {
-                debugPrint("[ERROR] WKWebView not found for quality change")
-                return
-            }
+            guard let webView = findWKWebView(in: hostingView) else { return }
             
             let js = """
             (function() {
@@ -626,14 +542,7 @@ class TiYoutubeplayerView: TiUIView {
             })();
             """
             
-            do {
-                let result = try await webView.evaluateJavaScript(js)
-                if let resultString = result as? String {
-                    debugPrint("[DEBUG] Set quality result: \(resultString)")
-                }
-            } catch {
-                debugPrint("[ERROR] Failed to set quality: \(error)")
-            }
+            _ = try? await webView.evaluateJavaScript(js)
         }
     }
     
@@ -642,6 +551,7 @@ class TiYoutubeplayerView: TiUIView {
             completion([])
             return
         }
+        
         createTask { @MainActor in
             guard let hostingView = self.playerHostingController?.view else {
                 completion([])
@@ -650,13 +560,9 @@ class TiYoutubeplayerView: TiUIView {
             
             @MainActor
             func findWKWebView(in view: UIView) -> WKWebView? {
-                if let webView = view as? WKWebView {
-                    return webView
-                }
+                if let webView = view as? WKWebView { return webView }
                 for subview in view.subviews {
-                    if let found = findWKWebView(in: subview) {
-                        return found
-                    }
+                    if let found = findWKWebView(in: subview) { return found }
                 }
                 return nil
             }
@@ -694,27 +600,19 @@ class TiYoutubeplayerView: TiUIView {
     
     func setPlaybackRate(rate: Double) {
         guard !isReleased, youtubePlayer != nil else { return }
+        
         createTask { @MainActor in
             let playbackRate: YouTubePlayer.PlaybackRate
             switch rate {
-            case 0.25:
-                playbackRate = .quarterSpeed
-            case 0.5:
-                playbackRate = .halfSpeed
-            case 0.75:
-                playbackRate = .threeQuarterSpeed
-            case 1.0:
-                playbackRate = .normal
-            case 1.25:
-                playbackRate = .oneQuarterFaster
-            case 1.5:
-                playbackRate = .oneHalfFaster
-            case 1.75:
-                playbackRate = .threeQuarterFaster
-            case 2.0:
-                playbackRate = .double
-            default:
-                playbackRate = .normal
+            case 0.25: playbackRate = .quarterSpeed
+            case 0.5: playbackRate = .halfSpeed
+            case 0.75: playbackRate = .threeQuarterSpeed
+            case 1.0: playbackRate = .normal
+            case 1.25: playbackRate = .oneQuarterFaster
+            case 1.5: playbackRate = .oneHalfFaster
+            case 1.75: playbackRate = .threeQuarterFaster
+            case 2.0: playbackRate = .double
+            default: playbackRate = .normal
             }
             
             try? await self.youtubePlayer.set(playbackRate: playbackRate)
@@ -723,6 +621,7 @@ class TiYoutubeplayerView: TiUIView {
     
     func reload() {
         guard !isReleased, youtubePlayer != nil else { return }
+        
         createTask { @MainActor in
             try? await self.youtubePlayer.reload()
         }
@@ -760,6 +659,8 @@ class TiYoutubeplayerView: TiUIView {
     }
     
     deinit {
+        NSLog("[YOUTUBE] ===== DEINIT CALLED =====")
         cleanup()
     }
 }
+
