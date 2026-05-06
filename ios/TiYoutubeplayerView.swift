@@ -341,13 +341,46 @@ class TiYoutubeplayerView: TiUIView {
                         self.forceHighQuality()
                     }
                 case .error(let error):
+                    // Tenta extrair código de erro do YouTube
+                    let errorCode = (error as NSError).code
+                    var errorType = "unknown"
+                    var errorMessage = error.localizedDescription
+                    
+                    // Mapeia códigos de erro conhecidos
+                    switch errorCode {
+                    case 2:
+                        errorType = "invalid_parameter"
+                        errorMessage = "Invalid video ID"
+                    case 5:
+                        errorType = "html5_error"
+                        errorMessage = "HTML5 player error"
+                    case 8:
+                        errorType = "video_removed"
+                        errorMessage = "Video has been removed or flagged as inappropriate"
+                    case 100:
+                        errorType = "not_found"
+                        errorMessage = "Video not found, private, or age-restricted"
+                    case 101, 150:
+                        errorType = "embedding_disabled"
+                        errorMessage = "Video owner does not allow embedding"
+                    case 153:
+                        errorType = "missing_referer"
+                        errorMessage = "Missing HTTP Referer header or API Client identification"
+                    default:
+                        errorType = "unknown"
+                        errorMessage = error.localizedDescription
+                    }
+                    
+                    NSLog("[YOUTUBE] Error: code=\(errorCode), type=\(errorType)")
+                    
                     self.proxy.fireEvent("error", with: [
-                        "message": error.localizedDescription,
-                        "code": (error as NSError).code
+                        "message": errorMessage,
+                        "code": errorCode,
+                        "type": errorType
                     ])
-                }
             }
-            .store(in: &cancellables)
+        }
+        .store(in: &cancellables)
     }
     
     private func setupOtherObservers() {

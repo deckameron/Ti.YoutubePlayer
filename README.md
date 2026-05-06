@@ -486,6 +486,18 @@ player.addEventListener('error', function(e) {
 
 -   `message`  (String): Error message
 -   `code`  (Number): Error code
+-   `type`  (String): Error type
+
+
+|Code|Type|Message 
+|--|--|--|
+|2|invalid_parameter|Invalid parameter value (e.g., invalid video ID)|
+|5|html5_error|HTML5 player error|
+|8|video_removed|Video has been removed or flagged as inappropriate|
+|100|not_found|Video not found, private, or age-restricted|
+|101|embedding_disabled|Owner doesn't allow embedding|
+|150|embedding_disabled|Same as 101 (duplicate)|
+|153|missing_referer|Missing HTTP Referer header or API Client identification|
 
 ----------
 
