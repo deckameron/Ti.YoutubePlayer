@@ -71,6 +71,11 @@ class TiYoutubeplayerModule: TiModule {
         return YouTubePlayer.PlaybackQuality.medium.name
     }
     
+    @objc(LARGE)
+    var PLAYBACK_QUALITY_LARGE: String {
+        return YouTubePlayer.PlaybackQuality.large.name
+    }
+    
     @objc(HD720)
     var PLAYBACK_QUALITY_HD720: String {
         return YouTubePlayer.PlaybackQuality.hd720.name
