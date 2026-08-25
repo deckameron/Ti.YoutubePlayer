@@ -63,6 +63,18 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
     private int scalingRetryCount = 0;
     private static final int MAX_SCALING_RETRIES = 30;
 
+    /**
+     * What the caller last asked for, applied as soon as onReady() hands us a player.
+     *
+     * youTubePlayer only exists from onReady() onwards, so a play() issued right after
+     * createPlayerView() would be dropped and — with autoplay off — the view would stay
+     * black forever.
+     */
+    private static final int PLAYBACK_NONE = 0;
+    private static final int PLAYBACK_PLAY = 1;
+    private static final int PLAYBACK_PAUSE = 2;
+    private volatile int desiredPlayback = PLAYBACK_NONE;
+
     private android.view.View fullscreenView;
     private kotlin.jvm.functions.Function0<kotlin.Unit> exitFullscreen;
 
@@ -279,6 +291,13 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                     player.mute();
                 } else {
                     player.unMute();
+                }
+
+                // Replay whatever was requested before the player existed.
+                if (view.desiredPlayback == PLAYBACK_PLAY) {
+                    player.play();
+                } else if (view.desiredPlayback == PLAYBACK_PAUSE) {
+                    player.pause();
                 }
 
                 view.readyRunnable = () -> {
@@ -660,43 +679,44 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
     // Public methods
     public void play() {
-        if (youTubePlayer != null && !isReleased) {
-            Log.d(TAG, "[DEBUG] play() called");
-            youTubePlayer.play();
-        }
+        if (isReleased) return;
+        desiredPlayback = PLAYBACK_PLAY;
+        // Not ready yet: onReady() replays this.
+        if (youTubePlayer == null) return;
+        youTubePlayer.play();
     }
 
     public void pause() {
-        if (youTubePlayer != null && !isReleased) {
-            Log.d(TAG, "[DEBUG] pause() called");
-            youTubePlayer.pause();
-        }
+        if (isReleased) return;
+        desiredPlayback = PLAYBACK_PAUSE;
+        if (youTubePlayer == null) return;
+        youTubePlayer.pause();
     }
 
     public void stop() {
-        if (youTubePlayer != null && !isReleased) {
-            Log.d(TAG, "[DEBUG] stop() called");
-            youTubePlayer.pause();
-            youTubePlayer.seekTo(0);
-        }
+        if (isReleased) return;
+        // Cancels a queued play instead of letting it start after teardown.
+        desiredPlayback = PLAYBACK_NONE;
+        if (youTubePlayer == null) return;
+        youTubePlayer.pause();
+        youTubePlayer.seekTo(0);
     }
 
     public void mute() {
-        if (youTubePlayer != null && !isReleased) {
-            Log.d(TAG, "[DEBUG] mute() called");
-            youTubePlayer.mute();
-            isMuted = true;
-            fireEvent("muteChanged", createEventDict("muted", true));
-        }
+        if (isReleased) return;
+        // Recorded up front so onReady() can apply it even if this call is too early.
+        isMuted = true;
+        if (youTubePlayer == null) return;
+        youTubePlayer.mute();
+        fireEvent("muteChanged", createEventDict("muted", true));
     }
 
     public void unmute() {
-        if (youTubePlayer != null && !isReleased) {
-            Log.d(TAG, "[DEBUG] unmute() called");
-            youTubePlayer.unMute();
-            isMuted = false;
-            fireEvent("muteChanged", createEventDict("muted", false));
-        }
+        if (isReleased) return;
+        isMuted = false;
+        if (youTubePlayer == null) return;
+        youTubePlayer.unMute();
+        fireEvent("muteChanged", createEventDict("muted", false));
     }
 
     public boolean isMuted() {
@@ -830,6 +850,7 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
         Log.d(TAG, "[DEBUG] Releasing player");
 
         isReleased = true;
+        desiredPlayback = PLAYBACK_NONE;
 
         cancelPendingRunnables();
 

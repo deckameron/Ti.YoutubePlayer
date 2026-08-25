@@ -138,6 +138,19 @@ player.play();
 
 ```
 
+> **Safe to call immediately after creation.** The player needs a moment to build its
+> web view and load YouTube's iFrame API. `play()`, `pause()`, `mute()` and `unmute()`
+> issued before that is finished are recorded and applied as soon as the player becomes
+> ready, so the common pattern below works without waiting for any event:
+>
+> ```javascript
+> const player = YouTubePlayer.createPlayerView({ videoId: id, autoplay: false });
+> container.add(player);
+> player.play();   // aplicado assim que o player fica pronto
+> ```
+>
+> `stop()` cancels a pending `play()` rather than queueing.
+
 ----------
 
 #### `pause()`

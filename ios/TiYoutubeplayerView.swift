@@ -84,6 +84,16 @@ class TiYoutubeplayerView: TiUIView {
     private var isConfigured = false
     private var didSetupOtherObservers = false
 
+    /// What the caller last asked for, applied as soon as the player reports `.ready`.
+    ///
+    /// The natural way to use this module is to create the view and immediately call
+    /// `play()`. At that point the iFrame API has not loaded yet, so the command would
+    /// evaluate JavaScript against a player that does not exist and be swallowed by
+    /// `try?` — leaving a permanently black view when `autoplay` is off.
+    private enum PlaybackIntent { case play, pause }
+    private var desiredPlayback: PlaybackIntent?
+    private var isPlayerReady = false
+
     /// Bounds can be zero while the view is off-screen; retry a bounded number of
     /// times instead of rescheduling forever.
     private var scalingRetryCount = 0
@@ -272,6 +282,9 @@ class TiYoutubeplayerView: TiUIView {
         metadataTask?.cancel()
         metadataTask = nil
 
+        desiredPlayback = nil
+        isPlayerReady = false
+
         playerHostingController?.view.removeFromSuperview()
         playerHostingController = nil
         youtubePlayer = nil
@@ -403,6 +416,7 @@ class TiYoutubeplayerView: TiUIView {
                     self.fire("playerStateChange", ["playerState": "idle"])
 
                 case .ready:
+                    self.isPlayerReady = true
                     self.fire("playerStateChange", ["playerState": "ready"])
                     self.setupOtherObservers()
 
@@ -411,7 +425,17 @@ class TiYoutubeplayerView: TiUIView {
                     // started with sound.
                     if self.isMuted {
                         self.mute()
+                    } else {
+                        self.unmute()
                     }
+
+                    // Replay whatever was requested before the player was usable.
+                    switch self.desiredPlayback {
+                    case .play: self.play()
+                    case .pause: self.pause()
+                    case nil: break
+                    }
+
                     self.forceHighQuality()
 
                 case .error(let error):
@@ -542,37 +566,58 @@ class TiYoutubeplayerView: TiUIView {
     // MARK: - Public Methods
 
     func play() {
+        guard !isReleased else { return }
+        desiredPlayback = .play
+        // Not ready yet: the `.ready` handler replays this.
+        guard isPlayerReady else { return }
+
         createTask { _, player in
             try? await player.play()
         }
     }
 
     func pause() {
+        guard !isReleased else { return }
+        desiredPlayback = .pause
+        guard isPlayerReady else { return }
+
         createTask { _, player in
             try? await player.pause()
         }
     }
 
     func stop() {
+        guard !isReleased else { return }
+        // Cancels a queued play instead of letting it start after teardown.
+        desiredPlayback = nil
+        guard isPlayerReady else { return }
+
         createTask { _, player in
             try? await player.stop()
         }
     }
 
     func mute() {
+        guard !isReleased else { return }
+        // Recorded up front so `.ready` can apply it even if this call is too early.
+        isMuted = true
+        guard isPlayerReady else { return }
+
         createTask { view, player in
             try? await player.mute()
             guard !view.isReleased else { return }
-            view.isMuted = true
             view.fire("muteChanged", ["muted": true])
         }
     }
 
     func unmute() {
+        guard !isReleased else { return }
+        isMuted = false
+        guard isPlayerReady else { return }
+
         createTask { view, player in
             try? await player.unmute()
             guard !view.isReleased else { return }
-            view.isMuted = false
             view.fire("muteChanged", ["muted": false])
         }
     }
@@ -689,6 +734,10 @@ class TiYoutubeplayerView: TiUIView {
     }
 
     func reload() {
+        guard !isReleased else { return }
+        // The web view reloads, so `.ready` will fire again.
+        isPlayerReady = false
+
         createTask { _, player in
             try? await player.reload()
         }

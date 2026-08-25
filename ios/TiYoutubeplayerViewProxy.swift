@@ -21,23 +21,67 @@ class TiYoutubeplayerViewProxy: TiViewProxy {
     /// thread and orphaned players.
     private weak var playerViewRef: TiYoutubeplayerView?
 
+    /// Commands issued before Titanium built the view.
+    ///
+    /// `createPlayerView(...)` followed immediately by `play()` runs entirely on the
+    /// Kroll thread, while the native view is only built on the next layout pass.
+    /// Dropping those calls leaves the player idle forever when `autoplay` is off, so
+    /// they are held here and replayed from `newView()`.
+    private var pendingCommands: [(TiYoutubeplayerView) -> Void] = []
+    private let pendingLock = NSLock()
+
+    /// Upper bound so a view that never gets built cannot grow this without limit.
+    private static let maxPendingCommands = 32
+
     override func newView() -> TiUIView! {
         let view = TiYoutubeplayerView(frame: .zero)
         playerViewRef = view
+        drainPendingCommands(into: view)
         return view
     }
 
-    /// Runs `block` against the player view on the main thread, if the view still exists.
+    private func drainPendingCommands(into view: TiYoutubeplayerView) {
+        pendingLock.lock()
+        let commands = pendingCommands
+        pendingCommands.removeAll()
+        pendingLock.unlock()
+
+        guard !commands.isEmpty else { return }
+
+        TiThreadPerformOnMainThread({
+            commands.forEach { $0(view) }
+        }, false)
+    }
+
+    private func discardPendingCommands() {
+        pendingLock.lock()
+        pendingCommands.removeAll()
+        pendingLock.unlock()
+    }
+
+    /// Runs `block` against the player view on the main thread, queueing it if the
+    /// view does not exist yet.
     private func onPlayerView(_ block: @escaping (TiYoutubeplayerView) -> Void) {
         TiThreadPerformOnMainThread({ [weak self] in
-            guard let view = self?.playerViewRef else { return }
-            block(view)
+            guard let self = self else { return }
+
+            if let view = self.playerViewRef {
+                block(view)
+                return
+            }
+
+            self.pendingLock.lock()
+            if self.pendingCommands.count < Self.maxPendingCommands {
+                self.pendingCommands.append(block)
+            }
+            self.pendingLock.unlock()
         }, false)
     }
 
     override func viewWillDetach() {
         // Deterministic teardown while the proxy is still alive, so no async
         // callback can outlive it.
+        discardPendingCommands()
         let view = playerViewRef
         TiThreadPerformOnMainThread({
             view?.cleanup()
@@ -57,6 +101,8 @@ class TiYoutubeplayerViewProxy: TiViewProxy {
 
     @objc(release:)
     func release(args: [Any]?) {
+        // Anything still queued is for a player the caller is discarding.
+        discardPendingCommands()
         onPlayerView { $0.cleanup() }
     }
 

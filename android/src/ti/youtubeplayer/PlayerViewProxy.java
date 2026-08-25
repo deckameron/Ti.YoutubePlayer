@@ -6,7 +6,9 @@ import org.appcelerator.titanium.view.TiUIView;
 import android.app.Activity;
 import android.os.Looper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 
 @Kroll.proxy(creatableInModule = TiYoutubePlayerModule.class)
@@ -18,9 +20,60 @@ public class PlayerViewProxy extends TiViewProxy {
         super();
     }
 
+    /** A command deferred until Titanium has actually built the view. */
+    private interface PlayerCommand {
+        void run(PlayerView player);
+    }
+
+    /**
+     * Commands issued before createView() ran.
+     *
+     * createPlayerView(...) followed immediately by play() executes on the JS runtime
+     * thread, while the view is only built later. Dropping those calls leaves the
+     * player idle forever when autoplay is off, so they are held here and replayed.
+     */
+    private final List<PlayerCommand> pendingCommands = new ArrayList<>();
+    private static final int MAX_PENDING_COMMANDS = 32;
+
     @Override
     public TiUIView createView(Activity activity) {
-        return new PlayerView(this);
+        PlayerView v = new PlayerView(this);
+        drainPendingCommands(v);
+        return v;
+    }
+
+    private void drainPendingCommands(final PlayerView v) {
+        final List<PlayerCommand> commands;
+        synchronized (pendingCommands) {
+            if (pendingCommands.isEmpty()) return;
+            commands = new ArrayList<>(pendingCommands);
+            pendingCommands.clear();
+        }
+        onUiThread(() -> {
+            for (PlayerCommand c : commands) {
+                c.run(v);
+            }
+        });
+    }
+
+    private void discardPendingCommands() {
+        synchronized (pendingCommands) {
+            pendingCommands.clear();
+        }
+    }
+
+    /** Runs cmd against the view, queueing it if the view does not exist yet. */
+    private void onPlayer(final PlayerCommand cmd) {
+        final PlayerView p = player();
+        if (p != null) {
+            cmd.run(p);
+            return;
+        }
+        synchronized (pendingCommands) {
+            if (pendingCommands.size() < MAX_PENDING_COMMANDS) {
+                pendingCommands.add(cmd);
+            }
+        }
     }
 
     /**
@@ -48,46 +101,31 @@ public class PlayerViewProxy extends TiViewProxy {
     // Play
     @Kroll.method
     public void play() {
-        PlayerView p = player();
-        if (p != null) {
-            p.play();
-        }
+        onPlayer(p -> p.play());
     }
 
     // Pause
     @Kroll.method
     public void pause() {
-        PlayerView p = player();
-        if (p != null) {
-            p.pause();
-        }
+        onPlayer(p -> p.pause());
     }
 
     // Stop
     @Kroll.method
     public void stop() {
-        PlayerView p = player();
-        if (p != null) {
-            p.stop();
-        }
+        onPlayer(p -> p.stop());
     }
 
     // Mute
     @Kroll.method
     public void mute() {
-        PlayerView p = player();
-        if (p != null) {
-            p.mute();
-        }
+        onPlayer(p -> p.mute());
     }
 
     // Unmute
     @Kroll.method
     public void unmute() {
-        PlayerView p = player();
-        if (p != null) {
-            p.unmute();
-        }
+        onPlayer(p -> p.unmute());
     }
 
     // Is Muted
@@ -99,25 +137,21 @@ public class PlayerViewProxy extends TiViewProxy {
 
     // Seek
     @Kroll.method
-    public void seek(float seconds) {
-        PlayerView p = player();
-        if (p != null) {
-            p.seekTo(seconds);
-        }
+    public void seek(final float seconds) {
+        onPlayer(p -> p.seekTo(seconds));
     }
 
     // Scaling Mode
     @Kroll.method
     public void setScalingMode(final int mode) {
-        final PlayerView p = player();
-        if (p != null) {
-            onUiThread(() -> p.setScalingMode(mode));
-        }
+        onPlayer(p -> onUiThread(() -> p.setScalingMode(mode)));
     }
 
     // Release
     @Kroll.method
     public void release() {
+        // Anything still queued is for a player the caller is discarding.
+        discardPendingCommands();
         final PlayerView p = player();
         if (p != null) {
             onUiThread(p::release);
@@ -126,64 +160,53 @@ public class PlayerViewProxy extends TiViewProxy {
 
     // Set Playback Rate
     @Kroll.method
-    public void setPlaybackRate(float rate) {
-        PlayerView p = player();
-        if (p != null) {
-            p.setPlaybackRate(rate);
-        }
+    public void setPlaybackRate(final float rate) {
+        onPlayer(p -> p.setPlaybackRate(rate));
     }
 
     // Change Video
     @Kroll.method
-    public void changeVideo(String videoId) {
-        PlayerView p = player();
-        if (p != null) {
-            p.loadVideo(videoId, 0);
-        }
+    public void changeVideo(final String videoId) {
+        onPlayer(p -> p.loadVideo(videoId, 0));
     }
 
     // Load Video
     @Kroll.method
     public void loadVideo(Object[] args) {
-        PlayerView p = player();
-        if (p == null || args.length == 0) return;
+        if (args.length == 0) return;
 
         if (args[0] instanceof HashMap) {
             @SuppressWarnings("unchecked")
             HashMap<String, Object> params = (HashMap<String, Object>) args[0];
-            String videoId = (String) params.get("videoId");
-            float startSeconds = params.containsKey("startSeconds")
+            final String videoId = (String) params.get("videoId");
+            final float startSeconds = params.containsKey("startSeconds")
                     ? ((Number) Objects.requireNonNull(params.get("startSeconds"))).floatValue()
                     : 0f;
 
-            p.loadVideo(videoId, startSeconds);
+            onPlayer(p -> p.loadVideo(videoId, startSeconds));
         }
     }
 
     // Cue Video
     @Kroll.method
     public void cueVideo(Object[] args) {
-        PlayerView p = player();
-        if (p == null || args.length == 0) return;
+        if (args.length == 0) return;
 
         if (args[0] instanceof HashMap) {
             @SuppressWarnings("unchecked")
             HashMap<String, Object> params = (HashMap<String, Object>) args[0];
-            String videoId = (String) params.get("videoId");
-            float startSeconds = params.containsKey("startSeconds")
+            final String videoId = (String) params.get("videoId");
+            final float startSeconds = params.containsKey("startSeconds")
                     ? ((Number) Objects.requireNonNull(params.get("startSeconds"))).floatValue()
                     : 0f;
 
-            p.cueVideo(videoId, startSeconds);
+            onPlayer(p -> p.cueVideo(videoId, startSeconds));
         }
     }
 
     @Kroll.method
-    public void setPlaybackQuality(String quality) {
-        PlayerView p = player();
-        if (p != null) {
-            p.setPlaybackQuality(quality);
-        }
+    public void setPlaybackQuality(final String quality) {
+        onPlayer(p -> p.setPlaybackQuality(quality));
     }
 
     @Kroll.method
@@ -197,10 +220,7 @@ public class PlayerViewProxy extends TiViewProxy {
     // Reload
     @Kroll.method
     public void reload() {
-        PlayerView p = player();
-        if (p != null) {
-            p.reload();
-        }
+        onPlayer(p -> p.reload());
     }
 
     // Get Duration (with callback)
