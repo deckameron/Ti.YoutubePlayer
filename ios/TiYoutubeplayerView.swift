@@ -62,7 +62,24 @@ class TiYoutubeplayerView: TiUIView {
     private var youtubePlayer: YouTubePlayer?
     private var playerHostingController: UIHostingController<AnyView>?
     private var cancellables = Set<AnyCancellable>()
-    var isMuted: Bool = true
+
+    /// Read from the Kroll thread by `isMuted()` on the proxy while the player writes
+    /// it on the main thread, so it needs its own lock.
+    private let mutedLock = NSLock()
+    private var _isMuted: Bool = true
+    var isMuted: Bool {
+        get {
+            mutedLock.lock()
+            defer { mutedLock.unlock() }
+            return _isMuted
+        }
+        set {
+            mutedLock.lock()
+            _isMuted = newValue
+            mutedLock.unlock()
+        }
+    }
+
     private var preferredQuality: String = "hd1080"
     private var scalingMode: Int = 0 // 0 = FIT, 1 = FILL
 
@@ -81,8 +98,43 @@ class TiYoutubeplayerView: TiUIView {
     private let taskManager = TaskManager()
     private var metadataTask: Task<Void, Never>?
     private var isReleased = false
-    private var isConfigured = false
     private var didSetupOtherObservers = false
+
+    /// The properties the current player was built from.
+    ///
+    /// Titanium recycles views in ListView/TableView and re-applies the next row's
+    /// properties, so this is what a reconfiguration is compared against.
+    private struct PlayerConfig: Equatable {
+        var videoId: String
+        var autoplay: Bool
+        var loop: Bool
+        var controls: Bool
+        var showCaptions: Bool
+        var showFullscreenButton: Bool
+        var keyboardControlsDisabled: Bool
+        var startSeconds: Double
+        var muted: Bool
+        var scalingMode: Int
+        var preferredQuality: String
+
+        /// These are baked into the iFrame when the player is created, so changing
+        /// any of them means the player has to be rebuilt. Everything else can be
+        /// applied to the running player.
+        func requiresRebuild(comparedTo other: PlayerConfig) -> Bool {
+            return autoplay != other.autoplay
+                || loop != other.loop
+                || controls != other.controls
+                || showCaptions != other.showCaptions
+                || showFullscreenButton != other.showFullscreenButton
+                || keyboardControlsDisabled != other.keyboardControlsDisabled
+                || startSeconds != other.startSeconds
+        }
+    }
+
+    private var currentConfig: PlayerConfig?
+
+    /// Parent this hosting controller was added to, for #5 containment.
+    private weak var hostingParentVC: UIViewController?
 
     /// What the caller last asked for, applied as soon as the player reports `.ready`.
     ///
@@ -189,64 +241,79 @@ class TiYoutubeplayerView: TiUIView {
     override func configurationSet() {
         super.configurationSet()
 
-        // Titanium reuses views in ListView/TableView and re-applies properties.
-        // Building a second player here would orphan the first one (and its WKWebView).
-        guard !isConfigured else {
-            if let videoId = proxy?.value(forKey: "videoId") as? String, videoId != currentVideoId {
-                loadVideo(videoId: videoId)
-            }
-            return
-        }
+        // A released view must not be brought back to life by a reconfiguration.
+        guard !isReleased else { return }
 
         proxyRef = proxy as? TiViewProxy
 
+        guard let config = readConfig() else { return }
+
+        if let previous = currentConfig {
+            // Recycled row. Rebuild only if an iFrame-level parameter changed;
+            // otherwise adjust the running player in place.
+            if config.requiresRebuild(comparedTo: previous) {
+                teardownPlayer()
+                buildPlayer(with: config)
+            } else {
+                applyLiveConfig(config, previous: previous)
+            }
+        } else {
+            buildPlayer(with: config)
+        }
+
+        currentConfig = config
+    }
+
+    private func readConfig() -> PlayerConfig? {
         guard let videoId = proxy?.value(forKey: "videoId") as? String, !videoId.isEmpty else {
             NSLog("[YOUTUBE] ERROR: videoId is required")
-            return
+            return nil
         }
 
-        isConfigured = true
-        currentVideoId = videoId
-
-        let autoplay = proxy.value(forKey: "autoplay") as? Bool ?? true
-        let loop = proxy.value(forKey: "loop") as? Bool ?? true
         let controls = proxy.value(forKey: "showControls") as? Bool ?? false
-        let muted = proxy.value(forKey: "muted") as? Bool ?? true
-        let showCaptions = proxy.value(forKey: "showCaptions") as? Bool ?? false
         let showFullscreenButton = proxy.value(forKey: "showFullscreenButton") as? Bool ?? false
-        let keyboardControlsDisabled = proxy.value(forKey: "keyboardControlsDisabled") as? Bool ?? true
-        let startSeconds = proxy.value(forKey: "startSeconds") as? Double ?? 0.0
-
-        if let mode = (proxy.value(forKey: "scalingMode") as? NSNumber)?.intValue {
-            scalingMode = mode
-        }
-
-        if let quality = proxy.value(forKey: "preferredQuality") as? String {
-            self.preferredQuality = quality
-        }
 
         if showFullscreenButton && !controls {
             NSLog("[YOUTUBE] WARNING: showFullscreenButton has no effect with showControls:false — "
                   + "YouTube renders the fullscreen button inside its control bar.")
         }
 
-        self.isMuted = muted
+        return PlayerConfig(
+            videoId: videoId,
+            autoplay: proxy.value(forKey: "autoplay") as? Bool ?? true,
+            loop: proxy.value(forKey: "loop") as? Bool ?? true,
+            controls: controls,
+            showCaptions: proxy.value(forKey: "showCaptions") as? Bool ?? false,
+            showFullscreenButton: showFullscreenButton,
+            keyboardControlsDisabled: proxy.value(forKey: "keyboardControlsDisabled") as? Bool ?? true,
+            startSeconds: proxy.value(forKey: "startSeconds") as? Double ?? 0.0,
+            muted: proxy.value(forKey: "muted") as? Bool ?? true,
+            scalingMode: (proxy.value(forKey: "scalingMode") as? NSNumber)?.intValue ?? 0,
+            preferredQuality: proxy.value(forKey: "preferredQuality") as? String ?? "hd1080"
+        )
+    }
+
+    private func buildPlayer(with config: PlayerConfig) {
+        currentVideoId = config.videoId
+        scalingMode = config.scalingMode
+        preferredQuality = config.preferredQuality
+        isMuted = config.muted
 
         var parameters = YouTubePlayer.Parameters()
-        parameters.autoPlay = autoplay
-        parameters.loopEnabled = loop
-        parameters.showControls = controls
-        parameters.keyboardControlsDisabled = keyboardControlsDisabled
-        parameters.showCaptions = showCaptions
-        parameters.showFullscreenButton = showFullscreenButton
+        parameters.autoPlay = config.autoplay
+        parameters.loopEnabled = config.loop
+        parameters.showControls = config.controls
+        parameters.keyboardControlsDisabled = config.keyboardControlsDisabled
+        parameters.showCaptions = config.showCaptions
+        parameters.showFullscreenButton = config.showFullscreenButton
 
         // Native start time, instead of a timed seek after the player is up.
-        if startSeconds > 0 {
-            parameters.startTime = Measurement(value: startSeconds, unit: UnitDuration.seconds)
+        if config.startSeconds > 0 {
+            parameters.startTime = Measurement(value: config.startSeconds, unit: UnitDuration.seconds)
         }
 
         let player = YouTubePlayer(
-            source: .video(id: videoId),
+            source: .video(id: config.videoId),
             parameters: parameters
         )
         youtubePlayer = player
@@ -263,10 +330,109 @@ class TiYoutubeplayerView: TiUIView {
 
         self.addSubview(hostingController.view)
         self.playerHostingController = hostingController
+        attachHostingControllerIfNeeded()
 
-        ytLog("SwiftUI player created for \(videoId)")
+        ytLog("SwiftUI player created for \(config.videoId)")
 
-        fetchVideoMetadata(videoId: videoId)
+        fetchVideoMetadata(videoId: config.videoId)
+    }
+
+    /// Applies the properties that do not require rebuilding the iFrame.
+    private func applyLiveConfig(_ config: PlayerConfig, previous: PlayerConfig) {
+        if config.preferredQuality != previous.preferredQuality {
+            preferredQuality = config.preferredQuality
+        }
+
+        if config.scalingMode != previous.scalingMode {
+            setScalingMode(mode: config.scalingMode)
+        }
+
+        if config.muted != previous.muted {
+            if config.muted { mute() } else { unmute() }
+        }
+
+        if config.videoId != previous.videoId {
+            loadVideo(videoId: config.videoId, startSeconds: config.startSeconds)
+        }
+    }
+
+    /// Drops the current player without marking the view released, so the same view
+    /// can host a new one.
+    private func teardownPlayer() {
+        cancellables.removeAll()
+        taskManager.cancelAll()
+        metadataTask?.cancel()
+        metadataTask = nil
+
+        didSetupOtherObservers = false
+        isPlayerReady = false
+        desiredPlayback = nil
+        videoWidth = 0
+        videoHeight = 0
+        scalingRetryCount = 0
+
+        if let hostingController = playerHostingController {
+            detachHostingController(hostingController)
+        }
+        playerHostingController = nil
+        youtubePlayer = nil
+    }
+
+    // MARK: - View controller containment
+
+    /// SwiftUI expects its hosting controller to live in the view-controller
+    /// hierarchy; without it, lifecycle, trait and safe-area updates do not reach the
+    /// player. The parent only exists once we are in a window, so this runs again from
+    /// `didMoveToWindow()`.
+    private func attachHostingControllerIfNeeded() {
+        guard !isReleased, let hostingController = playerHostingController else { return }
+
+        let target = closestViewController()
+        guard hostingController.parent !== target else { return }
+
+        // Recycled rows can end up under a different view controller, so move the
+        // hosting controller rather than assuming its first parent is still right.
+        // The view itself stays in our subview tree throughout.
+        if hostingController.parent != nil {
+            hostingController.willMove(toParent: nil)
+            hostingController.removeFromParent()
+        }
+
+        if let target = target {
+            target.addChild(hostingController)
+            hostingController.didMove(toParent: target)
+        }
+        hostingParentVC = target
+    }
+
+    private func detachHostingController(_ hostingController: UIHostingController<AnyView>) {
+        if hostingController.parent != nil {
+            hostingController.willMove(toParent: nil)
+            hostingController.view.removeFromSuperview()
+            hostingController.removeFromParent()
+        } else {
+            hostingController.view.removeFromSuperview()
+        }
+        hostingParentVC = nil
+    }
+
+    private func closestViewController() -> UIViewController? {
+        var responder: UIResponder? = self.next
+        while let current = responder {
+            if let viewController = current as? UIViewController {
+                return viewController
+            }
+            responder = current.next
+        }
+        return nil
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        // Only meaningful once we are in a window; there is no parent to find before that.
+        if window != nil {
+            attachHostingControllerIfNeeded()
+        }
     }
 
     /// Tears the player down. Must be called on the main thread.
@@ -285,9 +451,12 @@ class TiYoutubeplayerView: TiUIView {
         desiredPlayback = nil
         isPlayerReady = false
 
-        playerHostingController?.view.removeFromSuperview()
+        if let hostingController = playerHostingController {
+            detachHostingController(hostingController)
+        }
         playerHostingController = nil
         youtubePlayer = nil
+        currentConfig = nil
         proxyRef = nil
     }
 
@@ -586,14 +755,24 @@ class TiYoutubeplayerView: TiUIView {
         }
     }
 
+    /// Stops playback and rewinds to the start; a later `play()` resumes from there.
+    ///
+    /// Deliberately not `YouTubePlayer.stop()`, which maps to the iFrame API's
+    /// `stopVideo()` and unloads the video — after that a `play()` did nothing, while
+    /// the same call on Android resumed. YouTube's own documentation reserves
+    /// `stopVideo()` for rare cases and recommends pausing instead.
     func stop() {
         guard !isReleased else { return }
-        // Cancels a queued play instead of letting it start after teardown.
-        desiredPlayback = nil
+        // Also suppresses autoplay if this lands before the player is ready.
+        desiredPlayback = .pause
         guard isPlayerReady else { return }
 
         createTask { _, player in
-            try? await player.stop()
+            try? await player.pause()
+            try? await player.seek(
+                to: Measurement(value: 0, unit: UnitDuration.seconds),
+                allowSeekAhead: true
+            )
         }
     }
 
@@ -792,12 +971,23 @@ class TiYoutubeplayerView: TiUIView {
         playerHostingController = nil
         youtubePlayer = nil
 
+        let detach: () -> Void = {
+            guard let hostingController = hostingController else { return }
+            if hostingController.parent != nil {
+                hostingController.willMove(toParent: nil)
+                hostingController.view.removeFromSuperview()
+                hostingController.removeFromParent()
+            } else {
+                hostingController.view.removeFromSuperview()
+            }
+        }
+
         if Thread.isMainThread {
-            hostingController?.view.removeFromSuperview()
+            detach()
             // hostingController, player and subscriptions release here, on main.
         } else {
             DispatchQueue.main.async {
-                hostingController?.view.removeFromSuperview()
+                detach()
                 _ = player
                 _ = subscriptions
             }
