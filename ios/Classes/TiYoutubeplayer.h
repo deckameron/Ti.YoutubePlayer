@@ -2,8 +2,8 @@
 //  TiYoutubeplayer.h
 //  Ti.YoutubePlayer
 //
-//  Created by Your Name
-//  Copyright (c) 2026 Your Company. All rights reserved.
+//  Created by Douglas Alves
+//  Copyright (c) 2026 Upflix Inc. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
