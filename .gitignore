@@ -1,32 +1,36 @@
-# Titanium SDK files and directories
-/build/
-/dist/
-/*.zip
+# Titanium SDK build output
+build/
+dist/
+*.zip
 modules/
-platform/
 
-# Xcode/iOS specific ignores
-# Ignore user-specific project settings
+# Xcode
 xcuserdata/
-
-# Ignore some temporary files
-.DS_Store
+*.xcuserstate
 *.moved-aside
 *.pbxuser
 *.mode1v3
 *.mode2v3
 *.perspectivev3
-*.xcuserstate
+DerivedData/
+*.dSYM.zip
+*.snapshot
 
 # Swift Package Manager
 .swiftpm/
+.build/
 
 # CocoaPods
 Pods/
 Podfile.lock
 
-# Build products
-DerivedData/
-build/
-*.dSYM.zip
-*.snapshot
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+.idea/
+android/build/
+captures/
+
+# macOS
+.DS_Store
