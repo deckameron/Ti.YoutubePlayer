@@ -52,8 +52,12 @@ public class TiYoutubePlayerModule extends KrollModule {
 
 	@Kroll.onAppCreate
 	public static void onAppCreate(TiApplication app) {
-		// Module initialization if needed
-        WebView.setWebContentsDebuggingEnabled(true);
+		// Remote WebView inspection affects every WebView in the host app, so it
+		// must never be on in a production build.
+		if (app != null && app.getDeployType() != null
+				&& !TiApplication.DEPLOY_TYPE_PRODUCTION.equals(app.getDeployType())) {
+			WebView.setWebContentsDebuggingEnabled(true);
+		}
     }
 
 	@Override

@@ -55,7 +55,9 @@ const player = YouTubePlayer.createPlayerView({
     videoId: 'u00Y9e-Uxj0',
     autoplay: true,
     loop: true,
-    showControls: false,
+    // The fullscreen button lives inside YouTube's control bar, so it needs
+    // showControls: true to be reachable.
+    showControls: true,
     muted: false,
     showFullscreenButton: true,
     preferredQuality: YouTubePlayer.PLAYBACK_QUALITY_HD1080,

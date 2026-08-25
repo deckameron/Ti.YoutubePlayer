@@ -4,7 +4,7 @@
       "remotePackageReference": "YouTubePlayerKit",
       "repositoryURL": "https://github.com/SvenTiigi/YouTubePlayerKit",
       "requirementKind": "upToNextMajorVersion",
-      "requirementMinimumVersion": "1.9.0",
+      "requirementMinimumVersion": "2.0.5",
       "products": [
         {
           "productName": "YouTubePlayerKit",

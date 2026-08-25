@@ -4,7 +4,7 @@ A native Titanium module that enables inline YouTube video playback without forc
 - Built with [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) for iOS.
 - Built with [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) for Android.
 
-![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg) ![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
 
 <p align="center">
   <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_1.png?raw=true"
@@ -27,11 +27,20 @@ A native Titanium module that enables inline YouTube video playback without forc
 -   ✅ Detailed state and metadata events
 -   ✅ No native controls (Optional)
 -   ✅ Caption support
+-   ✅ Fullscreen support (requires `showControls: true`)
 -   ✅ Modern async API
 
 ## 📋 Requirements
 
 -   Titanium SDK 13.0.0+
+-   iOS 14.0+ / Android API 21+
+
+Underlying players, pulled in by the module — you do not need to add them yourself:
+
+| Platform | Library | Version |
+|--|--|--|
+| iOS | [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) | 2.0.5+ (resolved via SPM at build time) |
+| Android | [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) | 13.0.0 |
 
 
 ## Installation
@@ -45,7 +54,8 @@ Download the latest version from the [releases page](https://github.com/deckamer
 
 ```bash
 # Copy the compiled module to:
-{YOUR_PROJECT}/modules/iphone/
+{YOUR_PROJECT}/modules/iphone/     # iOS
+{YOUR_PROJECT}/modules/android/    # Android
 ```
 
 ### 3. Configure tiapp.xml
@@ -58,9 +68,10 @@ Add the module to your `tiapp.xml`:
 </modules>
 ```
 
-### Permissions (iOS only)
+### App Transport Security (iOS only)
 
-Add microphone permission to `tiapp.xml` for recording:
+The player runs inside a `WKWebView`. If your app tightens ATS, allow arbitrary
+loads in web content in `tiapp.xml`:
 
 ```xml
 <ios>
@@ -99,14 +110,16 @@ win.add(player);
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `videoId` | String | **required** | YouTube video ID |
-| `scalingMode` | String | `true` | `'SCALING_ASPECT_FIT'` or `'SCALING_ASPECT_FILL'` |
+| `scalingMode` | Number | `SCALING_ASPECT_FIT` | `SCALING_ASPECT_FIT` or `SCALING_ASPECT_FILL` |
 | `loop` | Boolean | `true` | Loop playback |
 | `showControls` | Boolean | `false` | Show YouTube controls |
 | `muted` | Boolean | `true` | Start muted |
 | `showCaptions` | Boolean | `false` | Show captions |
-| `showFullscreenButton` | Boolean | `false` | Show fullscreen button |
+| `showFullscreenButton` | Boolean | `false` | Show fullscreen button — **requires `showControls: true`** |
 | `preferredQuality` | String | `'hd1080'` | Preferred quality (`'small'`, `'medium'`, `'large'`, `'hd720'`, `'hd1080'`, `'highres'`) |
 | `autoplay` | Boolean | `true` | Start playback automatically |
+| `startSeconds` | Number | `0` | Position, in seconds, to start playback from |
+| `keyboardControlsDisabled` | Boolean | `true` | Disable keyboard shortcuts (iOS only) |
 
 **Note:** All standard `Ti.UI.View` properties also work (`width`, `height`, `top`, `left`, `backgroundColor`, etc.)
 
@@ -115,6 +128,7 @@ win.add(player);
 - PLAYBACK_QUALITY_AUTO
 - PLAYBACK_QUALITY_SMALL
 - PLAYBACK_QUALITY_MEDIUM
+- PLAYBACK_QUALITY_LARGE
 - PLAYBACK_QUALITY_HD720
 - PLAYBACK_QUALITY_HD1080
 - PLAYBACK_QUALITY_HIGH_RESOLUTION
@@ -132,6 +146,19 @@ Starts video playback.
 player.play();
 
 ```
+
+> **Safe to call immediately after creation.** The player needs a moment to build its
+> web view and load YouTube's iFrame API. `play()`, `pause()`, `mute()` and `unmute()`
+> issued before that is finished are recorded and applied as soon as the player becomes
+> ready, so the common pattern below works without waiting for any event:
+>
+> ```javascript
+> const player = YouTubePlayer.createPlayerView({ videoId: id, autoplay: false });
+> container.add(player);
+> player.play();   // aplicado assim que o player fica pronto
+> ```
+>
+> `stop()` cancels a pending `play()` rather than queueing.
 
 ----------
 
@@ -332,9 +359,43 @@ player.reload();
 
 ----------
 
+#### `setScalingMode(mode)`
+
+Changes how the video is fitted inside the view at runtime.
+
+```javascript
+player.setScalingMode(YouTubePlayer.SCALING_ASPECT_FILL);
+
+```
+
+**Parameters:**
+
+-   `mode`  (Number):  `SCALING_ASPECT_FIT`  or  `SCALING_ASPECT_FILL`
+
+----------
+
+#### `release()`
+
+Tears the player down and frees the underlying web view. Call it before removing
+the player from a window if you are not closing the window itself. The player
+cannot be reused afterwards.
+
+```javascript
+player.release();
+
+```
+
+----------
+
 #### `setPlaybackQuality(quality)`
 
-Sets playback quality (not guaranteed by YouTube).
+Sets playback quality.
+
+> **YouTube ignores this.** `setPlaybackQuality` has been a no-op in the IFrame API
+> since 2019 — quality is chosen by the player based on bandwidth and viewport size.
+> The method is kept for API compatibility and stores your preference, but do not
+> rely on it. On Android the underlying library exposes no quality API at all, and
+> `getAvailableQualityLevels()` always returns an empty array there.
 
 ```javascript
 player.setPlaybackQuality('hd1080');
@@ -400,6 +461,9 @@ player.addEventListener('playbackStateChange', function(e) {
 -   `code`  (Number):  `-1`  (unstarted),  `0`  (ended),  `1`  (playing),  `2`  (paused),  `3`  (buffering),  `5`  (cued)
 -   `isFullyReady`  (Boolean): Indicates if the player is completely ready to receive commands
 
+> On iOS this is always `true` once `playbackStateChange` fires; the flag exists for
+> Android, where the underlying player accepts commands slightly after `ready`.
+
 ----------
 
 #### `playbackQualityChange`
@@ -428,7 +492,29 @@ player.addEventListener('playbackRateChange', function(e) {
 
 **Event properties:**
 
--   `rate`  (Number): Current playback rate
+-   `rate`  (Number): Current playback rate (`0.25`–`2.0`)
+
+----------
+
+#### `fullscreenChange`
+
+Fired when the player enters or leaves fullscreen.
+
+> Requires **both** `showFullscreenButton: true` **and** `showControls: true`. The
+> fullscreen button is rendered inside YouTube's own control bar (`fs` only takes
+> effect when `controls` is on), so with `showControls: false` no button is drawn
+> and this event never fires.
+
+```javascript
+player.addEventListener('fullscreenChange', function(e) {
+    Ti.API.info('Fullscreen: ' + e.fullscreen);
+});
+
+```
+
+**Event properties:**
+
+-   `fullscreen`  (Boolean):  `true`  when entering fullscreen,  `false`  when leaving
 
 ----------
 
@@ -489,15 +575,47 @@ player.addEventListener('error', function(e) {
 -   `type`  (String): Error type
 
 
-|Code|Type|Message 
+YouTube IFrame API codes:
+
+|Code|Type|Message|
 |--|--|--|
-|2|invalid_parameter|Invalid parameter value (e.g., invalid video ID)|
-|5|html5_error|HTML5 player error|
-|8|video_removed|Video has been removed or flagged as inappropriate|
-|100|not_found|Video not found, private, or age-restricted|
-|101|embedding_disabled|Owner doesn't allow embedding|
-|150|embedding_disabled|Same as 101 (duplicate)|
-|153|missing_referer|Missing HTTP Referer header or API Client identification|
+|2|`invalid_parameter`|Invalid video ID|
+|5|`html5_error`|HTML5 player error|
+|100|`not_found`|Video not found, private, or age-restricted|
+|101|`embedding_disabled`|Owner doesn't allow embedding|
+|150|`embedding_disabled`|Same as 101|
+|153|`missing_referer`|Missing HTTP Referer header or API Client identification|
+
+Transport/setup failures reported by the module itself (negative codes):
+
+|Code|Type|Message|Platform|
+|--|--|--|--|
+|-1|`iframe_api_failed`|The YouTube iFrame API failed to load|iOS|
+|-2|`web_process_terminated`|The web content process was terminated|iOS|
+|-3|`setup_failed`|Player setup failed|iOS|
+|-4|`navigation_failed`|WebView navigation failed|iOS|
+|-99|`unknown`|Unrecognised player error|iOS, Android|
+
+----------
+
+## Platform differences
+
+The API is the same on both platforms, but the underlying players are not. These are
+the behaviours that genuinely differ:
+
+| Topic | iOS | Android |
+|--|--|--|
+| `stop()` | Unloads the video. A later `play()` will **not** resume it — use `loadVideo()` to start over. | Pauses and seeks to 0, so `play()` resumes. |
+| `setPlaybackQuality()` | Forwarded to the player, which YouTube ignores. | No-op: the library exposes no quality API. |
+| `getAvailableQualityLevels()` | Returns what the player reports. | Always returns an empty array. |
+| `preferredQuality` | Applied as a hint, ignored by YouTube. | Stored only. |
+| `keyboardControlsDisabled` | Supported. | Not applicable. |
+| `error` codes | Full range, including the negative transport codes below. | YouTube codes, plus `-99` for unrecognised errors. |
+| Playback rate | `0.25`–`2.0` in eight steps. | Four steps: `0.25`, `0.5`, `1.0`, `1.5`, `2.0`; other values fall back to `1.0`. |
+
+Quality control is a YouTube limitation, not a module one: `setPlaybackQuality` has
+been a no-op in the IFrame API since 2019, and the player picks quality from bandwidth
+and viewport size.
 
 ----------
 
