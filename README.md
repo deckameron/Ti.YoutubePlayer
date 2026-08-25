@@ -4,7 +4,7 @@ A native Titanium module that enables inline YouTube video playback without forc
 - Built with [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) for iOS.
 - Built with [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) for Android.
 
-![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg) ![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
 
 <p align="center">
   <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_1.png?raw=true"
@@ -27,11 +27,20 @@ A native Titanium module that enables inline YouTube video playback without forc
 -   ✅ Detailed state and metadata events
 -   ✅ No native controls (Optional)
 -   ✅ Caption support
+-   ✅ Fullscreen support (requires `showControls: true`)
 -   ✅ Modern async API
 
 ## 📋 Requirements
 
 -   Titanium SDK 13.0.0+
+-   iOS 14.0+ / Android API 21+
+
+Underlying players, pulled in by the module — you do not need to add them yourself:
+
+| Platform | Library | Version |
+|--|--|--|
+| iOS | [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) | 2.0.5+ (resolved via SPM at build time) |
+| Android | [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) | 13.0.0 |
 
 
 ## Installation
@@ -586,6 +595,27 @@ Transport/setup failures reported by the module itself (negative codes):
 |-3|`setup_failed`|Player setup failed|iOS|
 |-4|`navigation_failed`|WebView navigation failed|iOS|
 |-99|`unknown`|Unrecognised player error|iOS, Android|
+
+----------
+
+## Platform differences
+
+The API is the same on both platforms, but the underlying players are not. These are
+the behaviours that genuinely differ:
+
+| Topic | iOS | Android |
+|--|--|--|
+| `stop()` | Unloads the video. A later `play()` will **not** resume it — use `loadVideo()` to start over. | Pauses and seeks to 0, so `play()` resumes. |
+| `setPlaybackQuality()` | Forwarded to the player, which YouTube ignores. | No-op: the library exposes no quality API. |
+| `getAvailableQualityLevels()` | Returns what the player reports. | Always returns an empty array. |
+| `preferredQuality` | Applied as a hint, ignored by YouTube. | Stored only. |
+| `keyboardControlsDisabled` | Supported. | Not applicable. |
+| `error` codes | Full range, including the negative transport codes below. | YouTube codes, plus `-99` for unrecognised errors. |
+| Playback rate | `0.25`–`2.0` in eight steps. | Four steps: `0.25`, `0.5`, `1.0`, `1.5`, `2.0`; other values fall back to `1.0`. |
+
+Quality control is a YouTube limitation, not a module one: `setPlaybackQuality` has
+been a no-op in the IFrame API since 2019, and the player picks quality from bandwidth
+and viewport size.
 
 ----------
 
