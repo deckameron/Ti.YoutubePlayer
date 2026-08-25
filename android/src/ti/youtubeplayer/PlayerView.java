@@ -23,10 +23,16 @@ import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.view.TiUIView;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class PlayerView extends TiUIView implements LifecycleOwner {
 
     private static final String TAG = "PlayerView";
+
+    /** Verbose device diagnostics. Keep this off in release builds. */
+    private static final boolean VERBOSE_DIAGNOSTICS = false;
 
     private YouTubePlayerView youTubePlayerView;
     private YouTubePlayer youTubePlayer;
@@ -41,12 +47,24 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
     private volatile float currentTime = 0f;
     private String preferredQuality = "hd1080";
     private final boolean shouldLoop;
+    private float startSeconds = 0f;
     private boolean isReleased = false;
     private int scalingMode = 0; // Default SCALING_ASPECT_FIT
 
-    private float videoAspectRatio = 16f / 9f; // Default 16:9
-    private int videoWidth = 0;
-    private int videoHeight = 0;
+    private volatile float videoAspectRatio = 16f / 9f; // Default 16:9
+    private volatile int videoWidth = 0;
+    private volatile int videoHeight = 0;
+
+    private ExecutorService metadataExecutor;
+    private Future<?> metadataFuture;
+
+    // Bounds can be zero while the view is off-screen; retry a bounded number of
+    // times instead of rescheduling forever.
+    private int scalingRetryCount = 0;
+    private static final int MAX_SCALING_RETRIES = 30;
+
+    private android.view.View fullscreenView;
+    private kotlin.jvm.functions.Function0<kotlin.Unit> exitFullscreen;
 
     private Runnable readyRunnable;
     private Runnable loadVideoReadyRunnable;
@@ -75,12 +93,25 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
         String videoId = TiConvert.toString(proxy.getProperty("videoId"));
         boolean autoplay = TiConvert.toBoolean(proxy.getProperty("autoplay"), true);
         boolean loop = TiConvert.toBoolean(proxy.getProperty("loop"), true);
-        boolean controls = TiConvert.toBoolean(proxy.getProperty("controls"), false);
+        // `showControls` is the documented name; `controls` kept for back-compat.
+        Object controlsProp = proxy.getProperty("showControls");
+        if (controlsProp == null) {
+            controlsProp = proxy.getProperty("controls");
+        }
+        boolean controls = TiConvert.toBoolean(controlsProp, false);
         isMuted = TiConvert.toBoolean(proxy.getProperty("muted"), true);
         boolean showCaptions = TiConvert.toBoolean(proxy.getProperty("showCaptions"), false);
         boolean showFullscreenButton = TiConvert.toBoolean(proxy.getProperty("showFullscreenButton"), false);
 
+        if (showFullscreenButton && !controls) {
+            Log.w(TAG, "[WARN] showFullscreenButton has no effect with showControls:false - "
+                    + "YouTube renders the fullscreen button inside its control bar.");
+        }
+
         this.shouldLoop = loop;
+        this.startSeconds = TiConvert.toFloat(proxy.getProperty("startSeconds"), 0f);
+
+        metadataExecutor = Executors.newSingleThreadExecutor();
 
         String quality = TiConvert.toString(proxy.getProperty("preferredQuality"));
         if (quality != null) {
@@ -106,6 +137,7 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
     }
 
     private void logDiagnostics() {
+        if (!VERBOSE_DIAGNOSTICS) return;
         try {
             // Android version
             Log.d(TAG, "[DIAGNOSTICS] Android Version: " + android.os.Build.VERSION.RELEASE);
@@ -167,6 +199,9 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
         youTubePlayerView.setEnableAutomaticInitialization(false);
 
+        final WeakReference<PlayerView> weakThis = new WeakReference<>(this);
+        final WeakReference<PlayerView> weakSelf = weakThis;
+
         // Configure IFrame options
         IFramePlayerOptions.Builder optionsBuilder = new IFramePlayerOptions.Builder(proxy.getActivity())
                 .controls(controls ? 1 : 0)
@@ -174,14 +209,52 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                 .ivLoadPolicy(3)
                 .rel(0)
                 .autoplay(autoplay ? 1 : 0)
+                .mute(isMuted ? 1 : 0)
                 .fullscreen(showFullscreenButton ? 1 : 0);
 
         IFramePlayerOptions options = optionsBuilder.build();
 
+        // The fullscreen button only does anything if a FullscreenListener is
+        // registered; without one the control renders but taps are dropped.
+        if (showFullscreenButton) {
+            youTubePlayerView.addFullscreenListener(
+                    new com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.FullscreenListener() {
+                        @Override
+                        public void onEnterFullscreen(@NonNull android.view.View fullscreenView,
+                                                      @NonNull kotlin.jvm.functions.Function0<kotlin.Unit> exitFullscreen) {
+                            PlayerView view = weakSelf.get();
+                            if (view == null || view.isReleased || view.containerView == null) return;
+                            view.exitFullscreen = exitFullscreen;
+                            view.fullscreenView = fullscreenView;
+                            if (view.youTubePlayerView != null) {
+                                view.youTubePlayerView.setVisibility(android.view.View.GONE);
+                            }
+                            fullscreenView.setLayoutParams(new FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT));
+                            view.containerView.addView(fullscreenView);
+                            view.fireEvent("fullscreenChange", view.createEventDict("fullscreen", true));
+                        }
+
+                        @Override
+                        public void onExitFullscreen() {
+                            PlayerView view = weakSelf.get();
+                            if (view == null || view.isReleased || view.containerView == null) return;
+                            if (view.fullscreenView != null) {
+                                view.containerView.removeView(view.fullscreenView);
+                                view.fullscreenView = null;
+                            }
+                            view.exitFullscreen = null;
+                            if (view.youTubePlayerView != null) {
+                                view.youTubePlayerView.setVisibility(android.view.View.VISIBLE);
+                            }
+                            view.fireEvent("fullscreenChange", view.createEventDict("fullscreen", false));
+                        }
+                    });
+        }
+
         // Add lifecycle observer
         getLifecycle().addObserver(youTubePlayerView);
-
-        final WeakReference<PlayerView> weakThis = new WeakReference<>(this);
 
         // Initialize player
         youTubePlayerView.initialize(new AbstractYouTubePlayerListener() {
@@ -196,9 +269,9 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
                 // Load or cue video
                 if (autoplay) {
-                    player.loadVideo(videoId, 0f);
+                    player.loadVideo(videoId, view.startSeconds);
                 } else {
-                    player.cueVideo(videoId, 0f);
+                    player.cueVideo(videoId, view.startSeconds);
                 }
 
                 // Apply mute
@@ -293,8 +366,8 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                 PlayerView view = weakThis.get();
                 if (view == null || view.isReleased) return;
 
-                Log.d(TAG, "[DEBUG] Playback rate changed to: " + rate.toString());
-                view.fireEvent("playbackRateChange", view.createEventDict("rate", rate.toString()));
+                Log.d(TAG, "[DEBUG] Playback rate changed to: " + rate);
+                view.fireEvent("playbackRateChange", view.createEventDict("rate", mapRateToNumber(rate)));
             }
 
             @Override
@@ -303,11 +376,12 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                 if (view == null || view.isReleased) return;
 
                 int errorCode = view.mapErrorToCode(error);
-                Log.e(TAG, "[ERROR] Player error: " + error.toString() + " (code: " + errorCode + ")");
+                Log.e(TAG, "[ERROR] Player error: " + error + " (code: " + errorCode + ")");
 
                 KrollDict event = new KrollDict();
-                event.put("message", error.toString());
+                event.put("message", mapErrorToMessage(errorCode));
                 event.put("code", errorCode);
+                event.put("type", mapErrorToType(errorCode));
                 view.fireEvent("error", event);
             }
 
@@ -354,9 +428,13 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
         int containerHeight = containerView.getHeight();
 
         if (containerWidth == 0 || containerHeight == 0) {
+            if (mainHandler == null || scalingRetryCount >= MAX_SCALING_RETRIES) return;
+            scalingRetryCount++;
             mainHandler.postDelayed(this::applyCalculatedScaling, 100);
             return;
         }
+
+        scalingRetryCount = 0;
 
         float containerAspect = (float) containerWidth / (float) containerHeight;
 
@@ -400,6 +478,7 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
     public void setScalingMode(int mode) {
         scalingMode = mode;
+        scalingRetryCount = 0;
         Log.d(TAG, "[DEBUG] Scaling mode changed to: " + (mode == 1 ? "ASPECT_FILL" : "ASPECT_FIT"));
         applyCalculatedScaling();
     }
@@ -410,7 +489,39 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
             case HTML_5_PLAYER -> 5;
             case VIDEO_NOT_FOUND -> 100;
             case VIDEO_NOT_PLAYABLE_IN_EMBEDDED_PLAYER -> 101;
-            default -> 5;
+            default -> -99;
+        };
+    }
+
+    private static String mapErrorToType(int code) {
+        return switch (code) {
+            case 2 -> "invalid_parameter";
+            case 5 -> "html5_error";
+            case 100 -> "not_found";
+            case 101, 150 -> "embedding_disabled";
+            case 153 -> "missing_referer";
+            default -> "unknown";
+        };
+    }
+
+    private static String mapErrorToMessage(int code) {
+        return switch (code) {
+            case 2 -> "Invalid video ID";
+            case 5 -> "HTML5 player error";
+            case 100 -> "Video not found, private, or age-restricted";
+            case 101, 150 -> "Video owner does not allow embedding";
+            case 153 -> "Missing HTTP Referer header or API Client identification";
+            default -> "Unknown player error";
+        };
+    }
+
+    private static double mapRateToNumber(PlayerConstants.PlaybackRate rate) {
+        return switch (rate) {
+            case RATE_0_25 -> 0.25d;
+            case RATE_0_5 -> 0.5d;
+            case RATE_1_5 -> 1.5d;
+            case RATE_2 -> 2.0d;
+            default -> 1.0d;
         };
     }
 
@@ -464,70 +575,87 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
         }
     }
 
-    private void fetchVideoMetadataWithDimensions(String videoId) {
-        new Thread(() -> {
+    private void fetchVideoMetadataWithDimensions(final String videoId) {
+        if (isReleased || metadataExecutor == null) return;
+
+        if (metadataFuture != null) {
+            metadataFuture.cancel(true);
+        }
+
+        final WeakReference<PlayerView> weakThis = new WeakReference<>(this);
+
+        metadataFuture = metadataExecutor.submit(() -> {
+            java.net.HttpURLConnection conn = null;
             try {
                 String url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v="
                         + videoId + "&format=json";
 
                 java.net.URL apiUrl = new java.net.URL(url);
-                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) apiUrl.openConnection();
+                conn = (java.net.HttpURLConnection) apiUrl.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(5000);
                 conn.setReadTimeout(5000);
 
                 int responseCode = conn.getResponseCode();
-                if (responseCode == 200) {
-                    java.io.BufferedReader reader = new java.io.BufferedReader(
-                            new java.io.InputStreamReader(conn.getInputStream())
-                    );
-                    StringBuilder response = new StringBuilder();
+                if (responseCode != 200) {
+                    Log.w(TAG, "[WARN] oEmbed returned HTTP " + responseCode + " for " + videoId);
+                    return;
+                }
+
+                StringBuilder response = new StringBuilder();
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(conn.getInputStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         response.append(line);
                     }
-                    reader.close();
-
-                    org.json.JSONObject json = new org.json.JSONObject(response.toString());
-
-                    String title = json.optString("title", "");
-                    String author = json.optString("author_name", "");
-                    int width = json.optInt("width", 0);
-                    int height = json.optInt("height", 0);
-
-                    if (width > 0 && height > 0) {
-                        videoWidth = width;
-                        videoHeight = height;
-                        videoAspectRatio = (float) videoWidth / (float) videoHeight;
-
-                        Log.d(TAG, "[DEBUG] Video dimensions: " + videoWidth + "x" + videoHeight +
-                                " (aspect: " + videoAspectRatio + ")");
-
-                        mainHandler.post(() -> {
-                            if (!isReleased) {
-                                applyCalculatedScaling();
-                            }
-                        });
-                    }
-
-                    mainHandler.post(() -> {
-                        if (!isReleased) {
-                            KrollDict event = new KrollDict();
-                            event.put("videoId", videoId);
-                            event.put("title", title);
-                            event.put("author", author);
-                            fireEvent("metadataReceived", event);
-
-                            Log.d(TAG, "[DEBUG] Metadata: title=" + title + ", author=" + author);
-                        }
-                    });
                 }
 
-                conn.disconnect();
+                org.json.JSONObject json = new org.json.JSONObject(response.toString());
+
+                final String title = json.optString("title", "");
+                final String author = json.optString("author_name", "");
+                final int width = json.optInt("width", 0);
+                final int height = json.optInt("height", 0);
+
+                PlayerView self = weakThis.get();
+                if (self == null || self.isReleased || Thread.currentThread().isInterrupted()) return;
+
+                if (width > 0 && height > 0) {
+                    self.videoWidth = width;
+                    self.videoHeight = height;
+                    self.videoAspectRatio = (float) width / (float) height;
+
+                    Log.d(TAG, "[DEBUG] Video dimensions: " + width + "x" + height +
+                            " (aspect: " + self.videoAspectRatio + ")");
+                }
+
+                Handler handler = self.mainHandler;
+                if (handler == null) return;
+
+                handler.post(() -> {
+                    PlayerView v = weakThis.get();
+                    if (v == null || v.isReleased) return;
+
+                    if (width > 0 && height > 0) {
+                        v.scalingRetryCount = 0;
+                        v.applyCalculatedScaling();
+                    }
+
+                    KrollDict event = new KrollDict();
+                    event.put("videoId", videoId);
+                    event.put("title", title);
+                    event.put("author", author);
+                    v.fireEvent("metadataReceived", event);
+                });
             } catch (Exception e) {
                 Log.e(TAG, "[ERROR] Failed to fetch metadata: " + e.getMessage());
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
-        }).start();
+        });
     }
 
     // Public methods
@@ -705,13 +833,38 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
         cancelPendingRunnables();
 
+        if (metadataFuture != null) {
+            metadataFuture.cancel(true);
+            metadataFuture = null;
+        }
+        if (metadataExecutor != null) {
+            metadataExecutor.shutdownNow();
+            metadataExecutor = null;
+        }
+
         if (mainHandler != null) {
             mainHandler.removeCallbacksAndMessages(null);
         }
 
+        if (fullscreenView != null && containerView != null) {
+            containerView.removeView(fullscreenView);
+        }
+        fullscreenView = null;
+        exitFullscreen = null;
+
+        // Unregister before releasing. YouTubePlayerView is its own lifecycle
+        // observer and releases itself on ON_DESTROY, so leaving it registered
+        // meant release() ran twice on an already destroyed WebView.
         if (youTubePlayerView != null) {
+            if (lifecycleRegistry != null) {
+                lifecycleRegistry.removeObserver(youTubePlayerView);
+            }
             youTubePlayerView.release();
             youTubePlayerView = null;
+        }
+
+        if (lifecycleRegistry != null) {
+            lifecycleRegistry.setCurrentState(Lifecycle.State.DESTROYED);
         }
 
         youTubePlayer = null;
@@ -721,11 +874,8 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
             containerView = null;
         }
 
-        // Update lifecycle
-        if (lifecycleRegistry != null) {
-            lifecycleRegistry.setCurrentState(Lifecycle.State.DESTROYED);
-            lifecycleRegistry = null;
-        }
+        // lifecycleRegistry is intentionally kept: getLifecycle() is declared
+        // @NonNull and may still be queried during teardown.
 
         mainHandler = null;
 

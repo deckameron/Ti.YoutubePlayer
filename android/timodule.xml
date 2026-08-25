@@ -6,22 +6,13 @@
 	-->
 	<android xmlns:android="http://schemas.android.com/apk/res/android">
         <manifest>
+            <!-- The player only needs network access. Camera/microphone/bluetooth
+                 permissions were merged into every host app and trigger the Play
+                 Console sensitive-permission declaration for no reason. -->
             <uses-permission android:name="android.permission.INTERNET"/>
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-            
-            <uses-permission android:name="android.permission.CAMERA"/>
-            <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
-            <uses-permission android:name="android.permission.BLUETOOTH"/>
-            <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
-            
-            <uses-feature android:name="android.hardware.camera" android:required="false"/>
-            <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
-            <uses-feature android:name="android.hardware.microphone" android:required="false"/>
-            
-            <application 
-                android:usesCleartextTraffic="true"
-                android:hardwareAccelerated="true">
+
+            <application android:hardwareAccelerated="true">
             </application>
         </manifest>
     </android>
