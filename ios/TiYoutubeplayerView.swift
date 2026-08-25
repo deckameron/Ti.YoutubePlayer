@@ -385,14 +385,24 @@ class TiYoutubeplayerView: TiUIView {
     /// player. The parent only exists once we are in a window, so this runs again from
     /// `didMoveToWindow()`.
     private func attachHostingControllerIfNeeded() {
-        guard !isReleased,
-              let hostingController = playerHostingController,
-              hostingController.parent == nil,
-              let parentVC = closestViewController() else { return }
+        guard !isReleased, let hostingController = playerHostingController else { return }
 
-        parentVC.addChild(hostingController)
-        hostingController.didMove(toParent: parentVC)
-        hostingParentVC = parentVC
+        let target = closestViewController()
+        guard hostingController.parent !== target else { return }
+
+        // Recycled rows can end up under a different view controller, so move the
+        // hosting controller rather than assuming its first parent is still right.
+        // The view itself stays in our subview tree throughout.
+        if hostingController.parent != nil {
+            hostingController.willMove(toParent: nil)
+            hostingController.removeFromParent()
+        }
+
+        if let target = target {
+            target.addChild(hostingController)
+            hostingController.didMove(toParent: target)
+        }
+        hostingParentVC = target
     }
 
     private func detachHostingController(_ hostingController: UIHostingController<AnyView>) {
@@ -419,6 +429,7 @@ class TiYoutubeplayerView: TiUIView {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
+        // Only meaningful once we are in a window; there is no parent to find before that.
         if window != nil {
             attachHostingControllerIfNeeded()
         }
