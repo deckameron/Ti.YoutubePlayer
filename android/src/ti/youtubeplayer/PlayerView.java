@@ -750,13 +750,16 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
     }
 
     public void getAvailableQualityLevels(Object callback) {
-        Log.d(TAG, "[DEBUG] getAvailableQualityLevels() called (not supported by library)");
+        // The library exposes no quality API; always an empty list.
+        answer(callback, "levels", new String[]{});
+    }
 
-        if (callback instanceof KrollFunction && !isReleased) {
-            KrollDict result = new KrollDict();
-            result.put("levels", new String[]{});
-            ((KrollFunction) callback).callAsync(proxy.getKrollObject(), new Object[] { result });
-        }
+    /** Always invokes the callback, so a caller is never left waiting. */
+    private void answer(Object callback, String key, Object value) {
+        if (!(callback instanceof KrollFunction) || proxy == null) return;
+        KrollDict result = new KrollDict();
+        result.put(key, value);
+        ((KrollFunction) callback).callAsync(proxy.getKrollObject(), new Object[] { result });
     }
 
     public void loadVideo(String videoId, float startSeconds) {
@@ -829,19 +832,11 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
     }
 
     public void getDuration(Object callback) {
-        if (callback instanceof KrollFunction && !isReleased) {
-            KrollDict result = new KrollDict();
-            result.put("duration", currentDuration);
-            ((KrollFunction) callback).callAsync(proxy.getKrollObject(), new Object[] { result });
-        }
+        answer(callback, "duration", currentDuration);
     }
 
     public void getCurrentTime(Object callback) {
-        if (callback instanceof KrollFunction && !isReleased) {
-            KrollDict result = new KrollDict();
-            result.put("currentTime", currentTime);
-            ((KrollFunction) callback).callAsync(proxy.getKrollObject(), new Object[] { result });
-        }
+        answer(callback, "currentTime", currentTime);
     }
 
     @Override

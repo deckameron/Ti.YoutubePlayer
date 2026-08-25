@@ -1,5 +1,7 @@
 package ti.youtubeplayer;
 
+import org.appcelerator.kroll.KrollDict;
+import org.appcelerator.kroll.KrollFunction;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.view.TiUIView;
@@ -60,6 +62,20 @@ public class PlayerViewProxy extends TiViewProxy {
         synchronized (pendingCommands) {
             pendingCommands.clear();
         }
+    }
+
+    /**
+     * Answers a query callback immediately with a default.
+     *
+     * Queries cannot be queued the way commands are — the caller wants a value now,
+     * and delivering one much later would be worse than useless. Leaving the callback
+     * uncalled is worse still: the caller waits forever.
+     */
+    private void answerNow(Object callback, String key, Object value) {
+        if (!(callback instanceof KrollFunction)) return;
+        KrollDict result = new KrollDict();
+        result.put(key, value);
+        ((KrollFunction) callback).callAsync(getKrollObject(), new Object[] { result });
     }
 
     /** Runs cmd against the view, queueing it if the view does not exist yet. */
@@ -214,6 +230,8 @@ public class PlayerViewProxy extends TiViewProxy {
         PlayerView p = player();
         if (p != null) {
             p.getAvailableQualityLevels(callback);
+        } else {
+            answerNow(callback, "levels", new String[] {});
         }
     }
 
@@ -229,6 +247,8 @@ public class PlayerViewProxy extends TiViewProxy {
         PlayerView p = player();
         if (p != null) {
             p.getDuration(callback);
+        } else {
+            answerNow(callback, "duration", 0f);
         }
     }
 
@@ -238,6 +258,8 @@ public class PlayerViewProxy extends TiViewProxy {
         PlayerView p = player();
         if (p != null) {
             p.getCurrentTime(callback);
+        } else {
+            answerNow(callback, "currentTime", 0f);
         }
     }
 }

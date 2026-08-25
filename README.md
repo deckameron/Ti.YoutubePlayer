@@ -4,7 +4,7 @@ A native Titanium module that enables inline YouTube video playback without forc
 - Built with [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) for iOS.
 - Built with [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) for Android.
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg) ![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg) ![Titanium](https://img.shields.io/badge/Titanium-13.0+-red.svg) ![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg)
 
 <p align="center">
   <img src="https://github.com/deckameron/Ti.YoutubePlayer/blob/main/assets/screenshot_1.png?raw=true"
@@ -175,12 +175,20 @@ player.pause();
 
 #### `stop()`
 
-Stops video playback completely.
+Stops playback and rewinds to the beginning. A later `play()` starts the video again
+from the start.
 
 ```javascript
 player.stop();
+// ...
+player.play();   // plays from 0:00
 
 ```
+
+> **Changed in 1.2.0.** On iOS this used to map to the IFrame API's `stopVideo()`,
+> which unloads the video — a `play()` afterwards did nothing, while the same code
+> resumed on Android. Both platforms now pause and rewind. To drop the video entirely
+> and free its memory, call `release()`.
 
 ----------
 
@@ -605,11 +613,11 @@ the behaviours that genuinely differ:
 
 | Topic | iOS | Android |
 |--|--|--|
-| `stop()` | Unloads the video. A later `play()` will **not** resume it — use `loadVideo()` to start over. | Pauses and seeks to 0, so `play()` resumes. |
 | `setPlaybackQuality()` | Forwarded to the player, which YouTube ignores. | No-op: the library exposes no quality API. |
 | `getAvailableQualityLevels()` | Returns what the player reports. | Always returns an empty array. |
 | `preferredQuality` | Applied as a hint, ignored by YouTube. | Stored only. |
 | `keyboardControlsDisabled` | Supported. | Not applicable. |
+| Recycled rows | Reconfiguring a recycled ListView/TableView row applies the new properties in place, rebuilding the player only when an iFrame-level option (`autoplay`, `loop`, `showControls`, `showCaptions`, `showFullscreenButton`, `startSeconds`) actually changed. | Same properties, but the row is rebuilt from scratch. |
 | `error` codes | Full range, including the negative transport codes below. | YouTube codes, plus `-99` for unrecognised errors. |
 | Playback rate | `0.25`–`2.0` in eight steps. | Four steps: `0.25`, `0.5`, `1.0`, `1.5`, `2.0`; other values fall back to `1.0`. |
 
