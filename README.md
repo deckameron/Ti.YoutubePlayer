@@ -40,7 +40,7 @@ Underlying players, pulled in by the module — you do not need to add them your
 | Platform | Library | Version |
 |--|--|--|
 | iOS | [YouTubePlayerKit](https://github.com/SvenTiigi/YouTubePlayerKit) | 2.0.5+ (resolved via SPM at build time) |
-| Android | [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) | 13.0.0 |
+| Android | [android-youtube-player](https://github.com/PierfrancescoSoffritti/android-youtube-player) | 13.1.0 |
 
 
 ## Installation
@@ -114,7 +114,8 @@ win.add(player);
 | `loop` | Boolean | `true` | Loop playback |
 | `showControls` | Boolean | `false` | Show YouTube controls |
 | `muted` | Boolean | `true` | Start muted |
-| `showCaptions` | Boolean | `false` | Show captions |
+| `showCaptions` | Boolean | `false` | Initial YouTube caption hint |
+| `captionsEnabled` | Boolean | Unset | Explicit caption preference, reapplied across video changes. Omit to preserve YouTube behavior. See `setCaptionsEnabled()`. |
 | `showFullscreenButton` | Boolean | `false` | Show fullscreen button — **requires `showControls: true`** |
 | `preferredQuality` | String | `'hd1080'` | Preferred quality (`'small'`, `'medium'`, `'large'`, `'hd720'`, `'hd1080'`, `'highres'`) |
 | `autoplay` | Boolean | `true` | Start playback automatically |
@@ -137,6 +138,28 @@ win.add(player);
 - SCALING_ASPECT_FIT
 
 ### Methods
+
+#### `setCaptionsEnabled(enabled)`
+
+Applies a caption preference to the current and subsequent videos. Calls made before the player is ready are applied when it becomes ready. Pass `true` to select an available caption track, or `false` to hide captions. Videos without captions remain playable.
+
+```javascript
+const player = YouTubePlayer.createPlayerView({
+    videoId: 'VIDEO_ID',
+    captionsEnabled: Ti.App.Properties.getBool('video.captionsEnabled', false)
+});
+
+function setCaptions(enabled) {
+    Ti.App.Properties.setBool('video.captionsEnabled', enabled);
+    player.setCaptionsEnabled(enabled);
+}
+```
+
+The app owns persistence between sessions. This preference takes precedence over `showCaptions` and is reapplied when another video starts. Changes made directly in YouTube's controls are not saved by the module.
+
+Caption track control relies on undocumented YouTube IFrame behavior and is best effort. YouTube may change it independently of this module. Omitting `captionsEnabled` leaves existing caption behavior unchanged.
+
+----------
 
 #### `play()`
 
@@ -843,12 +866,12 @@ win.add(player);
 
 ### Video quality is low
 
-YouTube decides quality based on connection. You can _suggest_ a quality:
+YouTube chooses quality based on connection, player size and supported formats. Use its built-in controls (`showControls: true`) to select a resolution manually. `preferredQuality` remains accepted for compatibility, but does not force a resolution; the configuration below is not a fix for low quality. See [YouTube's quality API deprecation](https://developers.google.com/youtube/iframe_api_revision_history#october_24_2019).
 
 ```javascript
 const player = YouTubePlayer.createPlayerView({
     videoId: 'VIDEO_ID',
-    preferredQuality: 'hd1080'  // or 'highres' for 4K
+    preferredQuality: 'hd1080'  // Legacy preference; YouTube ignores this hint.
 });
 ```
 
