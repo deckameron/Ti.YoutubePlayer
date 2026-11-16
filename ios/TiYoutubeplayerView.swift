@@ -59,6 +59,66 @@ private final class TaskManager {
 
 class TiYoutubeplayerView: TiUIView {
 
+    private var captionsEnabled: Bool?
+    private static let captionsScript = """
+    (function(enabled) {
+        var player = window.youtubePlayer || window.player;
+        if (!player) return;
+        var state = window.__tiCaptions;
+        if (!state) {
+            state = window.__tiCaptions = { applied: {} };
+            window.__tiApplyCaptions = function(event) {
+                if (event && typeof event.data === 'number' && event.data !== 1) {
+                    if (event.data === -1 || event.data === 0 || event.data === 5) state.applied = {};
+                    return;
+                }
+                var id = (player.getVideoData() || {}).video_id;
+                if (id !== state.video) state.applied = {};
+                var key = event ? (typeof event.data === 'number' ? 'playing' : 'api') : 'requested';
+                if (state.applied[key]) return;
+                state.applied[key] = true;
+                state.video = id;
+                var selected = player.getOption('captions', 'track');
+                if (selected && selected.languageCode) state.track = selected;
+                if (state.enabled) {
+                    player.loadModule('captions');
+                    var tracks = player.getOption('captions', 'tracklist') || [];
+                    var track = tracks.filter(function(item) {
+                        return state.track && item.languageCode === state.track.languageCode && item.name === state.track.name;
+                    })[0] || tracks[0];
+                    if (track) player.setOption('captions', 'track', track);
+                } else {
+                    player.setOption('captions', 'track', {});
+                }
+            };
+            player.addEventListener('onApiChange', '__tiApplyCaptions');
+            player.addEventListener('onStateChange', '__tiApplyCaptions');
+        }
+        state.enabled = enabled;
+        state.applied = {};
+        window.__tiApplyCaptions();
+    })(__ENABLED__);
+    """
+
+    func setCaptionsEnabled(_ enabled: Bool) {
+        captionsEnabled = enabled
+        applyCaptionsPreference()
+    }
+
+    private func applyCaptionsPreference() {
+        guard isPlayerReady, let enabled = captionsEnabled else { return }
+        createTask { view, _ in
+            guard let hostingView = view.playerHostingController?.view,
+                  let webView = Self.findWebView(in: hostingView) else { return }
+            let script = Self.captionsScript.replacingOccurrences(of: "__ENABLED__", with: enabled ? "true" : "false")
+            do {
+                _ = try await webView.evaluateJavaScript(script)
+            } catch {
+                ytLog("Captions preference: \(error.localizedDescription)")
+            }
+        }
+    }
+
     private var youtubePlayer: YouTubePlayer?
     private var playerHostingController: UIHostingController<AnyView>?
     private var cancellables = Set<AnyCancellable>()
@@ -155,6 +215,7 @@ class TiYoutubeplayerView: TiUIView {
         super.initializeState()
 
         proxyRef = proxy as? TiViewProxy
+        captionsEnabled = proxy.value(forKey: "captionsEnabled") as? Bool
 
         self.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         self.backgroundColor = .black
@@ -262,6 +323,7 @@ class TiYoutubeplayerView: TiUIView {
         }
 
         currentConfig = config
+        applyCaptionsPreference()
     }
 
     private func readConfig() -> PlayerConfig? {
@@ -588,6 +650,7 @@ class TiYoutubeplayerView: TiUIView {
                     self.isPlayerReady = true
                     self.fire("playerStateChange", ["playerState": "ready"])
                     self.setupOtherObservers()
+                    self.applyCaptionsPreference()
 
                     // Applied here rather than on a timer: on a slow connection the
                     // old 1s delay fired before the player existed and the video

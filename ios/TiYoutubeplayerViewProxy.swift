@@ -12,6 +12,12 @@ import TitaniumKit
 
 @objc(TiYoutubeplayerViewProxy)
 class TiYoutubeplayerViewProxy: TiViewProxy {
+    @objc(setCaptionsEnabled:)
+    func setCaptionsEnabled(value: Any?) {
+        guard let enabled = Self.firstArgument(value) as? Bool else { return }
+        replaceValue(NSNumber(value: enabled), forKey: "captionsEnabled", notification: false)
+        onPlayerView { $0.setCaptionsEnabled(enabled) }
+    }
 
     /// Weak handle to the view created by `newView()`.
     ///

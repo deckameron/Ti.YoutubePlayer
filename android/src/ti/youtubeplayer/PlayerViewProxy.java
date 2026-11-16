@@ -18,6 +18,12 @@ public class PlayerViewProxy extends TiViewProxy {
 
     private static final String TAG = "PlayerViewProxy";
 
+    @Kroll.method
+    public void setCaptionsEnabled(final boolean enabled) {
+        setProperty("captionsEnabled", enabled);
+        onPlayer(p -> onUiThread(() -> p.setCaptionsEnabled(enabled)));
+    }
+
     public PlayerViewProxy() {
         super();
     }

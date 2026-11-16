@@ -31,6 +31,72 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
 
     private static final String TAG = "PlayerView";
 
+    private Boolean captionsEnabled;
+    private static final String CAPTIONS_SCRIPT = """
+        (function(enabled) {
+            var player = window.youtubePlayer || window.player;
+            if (!player) return;
+            var state = window.__tiCaptions;
+            if (!state) {
+                state = window.__tiCaptions = { applied: {} };
+                window.__tiApplyCaptions = function(event) {
+                    if (event && typeof event.data === 'number' && event.data !== 1) {
+                        if (event.data === -1 || event.data === 0 || event.data === 5) state.applied = {};
+                        return;
+                    }
+                    var id = (player.getVideoData() || {}).video_id;
+                    if (id !== state.video) state.applied = {};
+                    var key = event ? (typeof event.data === 'number' ? 'playing' : 'api') : 'requested';
+                    if (state.applied[key]) return;
+                    state.applied[key] = true;
+                    state.video = id;
+                    var selected = player.getOption('captions', 'track');
+                    if (selected && selected.languageCode) state.track = selected;
+                    if (state.enabled) {
+                        player.loadModule('captions');
+                        var tracks = player.getOption('captions', 'tracklist') || [];
+                        var track = tracks.filter(function(item) {
+                            return state.track && item.languageCode === state.track.languageCode && item.name === state.track.name;
+                        })[0] || tracks[0];
+                        if (track) player.setOption('captions', 'track', track);
+                    } else {
+                        player.setOption('captions', 'track', {});
+                    }
+                };
+                player.addEventListener('onApiChange', '__tiApplyCaptions');
+                player.addEventListener('onStateChange', '__tiApplyCaptions');
+            }
+            state.enabled = enabled;
+            state.applied = {};
+            window.__tiApplyCaptions();
+        })(__ENABLED__);
+        """;
+
+    private android.webkit.WebView findWebView(android.view.View view) {
+        if (view instanceof android.webkit.WebView) return (android.webkit.WebView) view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                android.webkit.WebView found = findWebView(group.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    public void setCaptionsEnabled(boolean enabled) {
+        captionsEnabled = enabled;
+        applyCaptionsPreference();
+    }
+
+    private void applyCaptionsPreference() {
+        if (isReleased || youTubePlayer == null || captionsEnabled == null) return;
+        android.webkit.WebView webView = findWebView(containerView);
+        if (webView != null) {
+            webView.evaluateJavascript(CAPTIONS_SCRIPT.replace("__ENABLED__", captionsEnabled.toString()), null);
+        }
+    }
+
     /** Verbose device diagnostics. Keep this off in release builds. */
     private static final boolean VERBOSE_DIAGNOSTICS = false;
 
@@ -113,6 +179,8 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
         boolean controls = TiConvert.toBoolean(controlsProp, false);
         isMuted = TiConvert.toBoolean(proxy.getProperty("muted"), true);
         boolean showCaptions = TiConvert.toBoolean(proxy.getProperty("showCaptions"), false);
+        Object captionsPreference = proxy.getProperty("captionsEnabled");
+        if (captionsPreference != null) captionsEnabled = TiConvert.toBoolean(captionsPreference);
         boolean showFullscreenButton = TiConvert.toBoolean(proxy.getProperty("showFullscreenButton"), false);
 
         if (showFullscreenButton && !controls) {
@@ -308,6 +376,8 @@ public class PlayerView extends TiUIView implements LifecycleOwner {
                     }
                 };
                 view.mainHandler.postDelayed(view.readyRunnable, 2000);
+
+                view.applyCaptionsPreference();
 
                 // Fire ready event
                 view.fireEvent("playerStateChange", view.createEventDict("playerState", "ready"));
